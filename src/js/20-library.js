@@ -38,7 +38,7 @@ function renderGlossaryList() {
   const list = $('lib-list');
   const results = filterGlossary();
   if (!results.length) {
-    list.innerHTML = `<div class="lib-empty"><strong>Tidak ada istilah yang cocok.</strong>Coba kata kunci lain, atau ubah filter kategori di atas.</div>`;
+    list.innerHTML = `<div class="lib-empty"><strong>Tidak ada istilah yang cocok.</strong>Coba kata kunci lain, atau ubah filter kategori.</div>`;
     return;
   }
   const expanded = LIB_STATE.listExpanded;
@@ -53,9 +53,7 @@ function renderGlossaryList() {
       </div>
       <div class="li-def">${esc(e.simple || e.definition)}</div>
     </button>`).join('');
-  if (hidden > 0) {
-    html += `<div style="text-align:center"><button class="view-more-btn" data-lib-expand="list">${expanded ? 'Show less' : `Show more (${hidden} lagi)`}</button></div>`;
-  }
+  if (hidden > 0) html += `<div style="text-align:center"><button class="view-more-btn" data-lib-expand="list">${expanded ? 'Show less' : `Show more (${hidden} lagi)`}</button></div>`;
   list.innerHTML = html;
 }
 
@@ -67,11 +65,8 @@ function renderGlossaryDetail(termId) {
   const relLimit = 5, relExp = LIB_STATE.relatedExpanded;
   const relShown = relExp ? related : related.slice(0, relLimit);
   const relHidden = related.length - Math.min(relLimit, related.length);
-
   let html = `<h3>${esc(e.name)}${e.abbr ? ` <span class="ld-abbr">${esc(e.abbr)}</span>` : ''} <span class="ld-cat">${esc(getCategoryName(e.category))}</span></h3>`;
-  if (e.simple) {
-    html += `<div class="ld-simple"><span class="ld-simple-icon" aria-hidden="true">💡</span><div><strong>Intinya:</strong> ${esc(e.simple)}</div></div>`;
-  }
+  if (e.simple) html += `<div class="ld-simple"><span class="ld-simple-icon">💡</span><div><strong>Intinya:</strong> ${esc(e.simple)}</div></div>`;
   html += `<div class="ld-section"><h4>Apa itu?</h4><p>${esc(e.definition)}</p></div>`;
   if (e.fungsi) html += `<div class="ld-section"><h4>Untuk apa?</h4><p>${esc(e.fungsi)}</p></div>`;
   if (e.identifikasi) html += `<div class="ld-section"><h4>Cara mengenalinya</h4><p>${esc(e.identifikasi)}</p></div>`;
@@ -81,7 +76,7 @@ function renderGlossaryDetail(termId) {
     e.contoh.forEach(c => html += `<div class="ld-ex"><div class="ex-sent">${c.kalimat}</div><div class="ex-note">${esc(c.catatan)}</div></div>`);
     html += `</div>`;
   }
-  if (e.perbedaan) html += `<div class="ld-section"><h4>Bedanya dengan istilah lain</h4><p>${esc(e.perbedaan)}</p></div>`;
+  if (e.perbedaan) html += `<div class="ld-section"><h4>Bedanya</h4><p>${esc(e.perbedaan)}</p></div>`;
   if (related.length) {
     html += `<div class="ld-section"><h4>Istilah terkait</h4><div class="ld-related">`;
     html += relShown.map(r => `<button type="button" class="lib-related-btn" data-term="${esc(r.id)}">${esc(r.name)}</button>`).join('');
