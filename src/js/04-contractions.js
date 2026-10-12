@@ -51,5 +51,4 @@ const C = {
   "who's":[['who','WP',null,null,0],['is','VBZ','be','V-s',1]],
   "let's":[['let','VB',null,null,0],['us','PRP',null,null,0]]
 };
-
 const ING_NOUNS = new Set(['morning','evening','thing','something','anything','nothing','everything','king','ring','spring','string','ceiling','opening','sibling','darling','offering','suffering']);

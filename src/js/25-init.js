@@ -6,9 +6,17 @@
                autoGrowInput (14); analyze (17)
    ============================================================ */
 const tcEl = $('target-count');
-if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' pass · 0 fail · 0 xfail';
+if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · target: 0 hard fail';
 
 $('run-tests').addEventListener('click', runTests);
+const collectBtn = $('collect-oov');
+if (collectBtn) collectBtn.addEventListener('click', () => {
+  const oov = collectOOV();
+  const panel = $('oov-panel');
+  panel.hidden = false;
+  panel.textContent = oov.length ? oov.join('\n') : '(tidak ada OOV)';
+  console.log('[OOV]', oov);
+});
 initLibraryEvents();
 initBottomNav();
 initTextViewEvents();

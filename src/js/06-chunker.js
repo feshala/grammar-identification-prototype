@@ -71,3 +71,31 @@ function chunk(tokens) {
   }
   return normalizeSpans(spans);
 }
+
+/* ============================================================
+   5b. W15b — split VP berisi 2+ finit
+   ============================================================ */
+function splitFiniteVPs(tokens, vpSpans) {
+  const out = [];
+  for (const vp of vpSpans) {
+    const finites = [];
+    let i = vp.start;
+    while (i <= vp.end) {
+      const t = tokens[i];
+      const isFin = t.tag === 'VBD' || t.tag === 'VBP' || t.tag === 'VBZ';
+      const isMod = t.tag === 'MD' && i + 1 <= vp.end && tokens[i+1].tag === 'VB';
+      if (isMod) { finites.push({start:i, end:i+1}); i += 2; continue; }
+      if (isFin) finites.push({start:i, end:i});
+      i++;
+    }
+    if (finites.length <= 1) { out.push(vp); continue; }
+    let cursor = vp.start;
+    for (let k = 0; k < finites.length; k++) {
+      const isLast = k === finites.length - 1;
+      const segEnd = isLast ? vp.end : finites[k].end;
+      out.push({start:cursor, end:segEnd, type:'VP', label:'Kelompok Kata Kerja'});
+      cursor = segEnd + 1;
+    }
+  }
+  return out;
+}

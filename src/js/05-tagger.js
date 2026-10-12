@@ -143,6 +143,9 @@ function tagOne(tokens, i) {
     if (t.tag === 'VB' && t.amb?.includes('NN') && prevTag && /^(DT|PRP\$|JJ)$/.test(prevTag)) {
       t.tag = 'NN'; t.form = null;
     }
+    if (t.tag === 'NN' && t.amb?.includes('VB') && prevTag && /^(PRP|NNP)$/.test(prevTag)) {
+      t.tag = 'VB'; t.form = 'V1';
+    }
     t.uncertain = false;
     return;
   }
@@ -228,8 +231,27 @@ function fixAmbiguousIs(tokens) {
   }
 }
 
+const PROVENANCE_WEIGHT = { lexicon: 1.0, irregular: 0.95, affix: 0.8, context: 0.65, fallback: 0.4 };
+const PROVENANCE_COLOR = { lexicon: '#2e8b57', irregular: '#4a6ee0', affix: '#e0a800', context: '#d97706', fallback: '#d9534f' };
+
+function tagWithProvenance(tokens) {
+  for (const t of tokens) {
+    let prov;
+    if (t.unknown) prov = 'fallback';
+    else if (t.uncertain) prov = 'context';
+    else if (t.isCont) prov = 'lexicon';
+    else if (t.tag === 'PUNCT') prov = 'lexicon';
+    else if (IRREG[t.text.toLowerCase()]) prov = 'irregular';
+    else if (LEX[t.text.toLowerCase()]) prov = 'lexicon';
+    else prov = 'affix';
+    t.provenance = prov;
+    t.confidence = PROVENANCE_WEIGHT[prov];
+  }
+}
+
 function tagAll(tokens) {
   for (let i = 0; i < tokens.length; i++) tagOne(tokens, i);
   fixAmbiguousIs(tokens);
   markAux(tokens);
+  tagWithProvenance(tokens);
 }

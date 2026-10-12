@@ -35,6 +35,7 @@ p.sub{color:var(--muted);font-size:13px;margin:0 0 20px;text-align:center}
 .tok:hover{border-bottom-color:#666}
 .tok.cont-mid{margin-left:-2px;border-top-left-radius:0;border-bottom-left-radius:0;padding-left:3px}
 .tok.selected{outline:2px solid #444;outline-offset:1px}
+.tok .prov-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:3px;vertical-align:super}
 .status{margin-top:12px;text-align:center;font-size:13px;color:var(--muted);font-style:italic}
 #legend{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:#444;justify-content:center}
 .legend-item{display:inline-flex;align-items:center;gap:5px}
@@ -145,6 +146,9 @@ code{background:#f0f0f0;padding:1px 5px;border-radius:4px;font-size:12px}
 .nav-btn.active{color:var(--accent)}
 .nav-btn.active svg{stroke:var(--accent)}
 .page-hidden{display:none!important}
+.prov-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#555;justify-content:center;margin-top:8px}
+.prov-legend .pl{display:inline-flex;align-items:center;gap:4px}
+.prov-legend .pdot{width:8px;height:8px;border-radius:50%}
 @media(max-width:640px){
   .grid{grid-template-columns:1fr}
   .card .kv{grid-template-columns:110px 1fr}
