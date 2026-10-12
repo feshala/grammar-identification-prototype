@@ -14,7 +14,7 @@ function renderSentence() {
     if (t.contEnd && !t.contStart) cls.push('cont-mid');
     if (!t.contEnd && t.contStart) cls.push('cont-mid');
     if (STATE.selected === i) cls.push('selected');
-    return `<span class="${cls.join(' ')}" data-idx="${i}" ${style} title="${esc((TAG_LABEL[t.tag]||t.tag) + (t.lemma ? ' · '+t.lemma : ''))}">${esc(t.text)}</span>`;
+    return `<span class="${cls.join(' ')}" data-idx="${i}" ${style} title="${esc((TAG_LABEL[t.tag]||t.tag) + (t.lemma ? ' · '+t.lemma : '') + (t.provenance ? ' · '+t.provenance : ''))}">${esc(t.text)}</span>`;
   }).join(' ');
 }
 
@@ -59,7 +59,17 @@ function renderSummary() {
   const isQ = tokens.some(t => t.text === '?');
   const isImp = !s.subject && s.vp && s.vp.start === 0;
   rows.push(['Jenis kalimat', isQ ? 'Kalimat tanya' : isImp ? 'Kalimat perintah' : 'Kalimat pernyataan', isQ ? 'interrogative' : null]);
-  $('summary').innerHTML = `<h3>Ringkasan Struktur</h3><dl class="kv">${rows.map(([k,v,gid]) => `<dt>${gid ? glossLink(gid, k) : esc(k)}</dt><dd>${esc(v||'—')}</dd>`).join('')}</dl>`;
+
+  const meaningful = tokens.filter(t => t.tag !== 'PUNCT');
+  const counts = {lexicon:0, irregular:0, affix:0, context:0, fallback:0};
+  meaningful.forEach(t => { if (t.provenance) counts[t.provenance]++; });
+  const totalM = meaningful.length || 1;
+  const confSum = meaningful.reduce((a,t) => a + (t.confidence||0), 0);
+  const confAvg = Math.round((confSum / totalM) * 100);
+
+  $('summary').innerHTML = `<h3>Ringkasan Struktur</h3><dl class="kv">${rows.map(([k,v,gid]) => `<dt>${gid ? glossLink(gid, k) : esc(k)}</dt><dd>${esc(v||'—')}</dd>`).join('')}</dl>`
+    + `<p class="expl"><strong>Keyakinan rata-rata:</strong> ${confAvg}% · `
+    + `lexicon=${counts.lexicon}, irregular=${counts.irregular}, affix=${counts.affix}, context=${counts.context}, fallback=${counts.fallback}</p>`;
 }
 
 function renderDetail() {
@@ -78,6 +88,7 @@ function renderDetail() {
   if (info.aux) html += `<dt>Peran</dt><dd>${glossLink('auxiliary-verb', 'Kata bantu')}</dd>`;
   if (wf.phraseRole) html += `<dt>Fungsi dalam kalimat</dt><dd>${glossLink(wf.phraseGloss, wf.phraseRole)}</dd>`;
   if (wf.tense) html += `<dt>Waktu (Tense)</dt><dd>${glossLink(tenseGloss, wf.tense.name)} — <code>${esc(wf.tense.formula)}</code></dd>`;
+  if (info.provenance) html += `<dt>Asal tag</dt><dd><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${PROVENANCE_COLOR[info.provenance]};margin-right:5px"></span><code>${esc(info.provenance)}</code> · keyakinan ${Math.round((info.confidence||0)*100)}%</dd>`;
   html += `</dl><p class="expl">${esc(info.reason)}</p>`;
   if (wf.span) {
     const pg = PHRASE_TO_GLOSSARY[wf.span.type];
@@ -91,7 +102,8 @@ function renderValidation() {
   if (!STATE.issues.length) { $('validation').innerHTML = `<h3>Pemeriksaan Grammar</h3><div class="muted">—</div>`; return; }
   renderExpandable('validation', STATE.issues, i => {
     const btn = i.glossId ? ` <button type="button" class="gloss-link" data-gloss="${esc(i.glossId)}" style="font-size:11.5px">Pelajari aturannya</button>` : '';
-    return `<div class="issue ${i.level}">${esc(i.msg)}${btn}</div>`;
+    const verdictTag = i.verdict ? ` <code style="font-size:11px">verdict: ${esc(i.verdict)}</code>` : '';
+    return `<div class="issue ${i.level}">${esc(i.msg)}${verdictTag}${btn}</div>`;
   });
   $('validation').innerHTML = `<h3>Pemeriksaan Grammar</h3>` + $('validation').innerHTML;
 }
