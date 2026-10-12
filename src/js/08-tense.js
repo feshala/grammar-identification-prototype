@@ -19,7 +19,6 @@ function detectTense(tokens, vp) {
               span:{start:vp.start, end:vp.end + 2}, glossId:'simple-future'};
     }
   }
-
   if (L[0]==='have' && N>=3 && L[1]==='be' && T[2]==='VBG')
     return T[0]==='VBD'
       ? {name:'Past Perfect Continuous', formula:'had + been + V-ing', span:vp, glossId:'past-perfect-continuous'}
@@ -28,7 +27,6 @@ function detectTense(tokens, vp) {
     return T[0]==='VBD'
       ? {name:'Past Perfect (Passive)', formula:'had + been + V3', span:vp, glossId:'passive-voice'}
       : {name:'Present Perfect (Passive)', formula:'have/has + been + V3', span:vp, glossId:'passive-voice'};
-
   if (L[0]==='have' && T[1]==='VBN')
     return T[0]==='VBD'
       ? {name:'Past Perfect', formula:'had + V3', span:vp, glossId:'past-perfect'}
