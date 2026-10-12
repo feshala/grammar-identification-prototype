@@ -4,6 +4,16 @@
    ============================================================ */
 const VERB_TAGS = new Set(['VB','VBD','VBG','VBN','VBP','VBZ']);
 
+function computeNextNonNot(tokens) {
+  const n = tokens.length;
+  const arr = new Array(n).fill(n);
+  for (let i = n - 2; i >= 0; i--) {
+    const nx = tokens[i+1];
+    arr[i] = (nx && nx.tag === 'RB' && nx.lemma === 'not') ? arr[i+1] : i+1;
+  }
+  return arr;
+}
+
 function findVerbAfterAux(tokens, startIdx, maxHops) {
   if (maxHops == null) maxHops = 4;
   for (let k = 1; k <= maxHops && startIdx + k < tokens.length; k++) {
@@ -19,13 +29,10 @@ const QUANTIFIER_HEADS = new Set([
   'lot','number','group','rest','majority','minority','part','half','all',
   'some','most','none','plenty','couple','dozen','hundred','thousand','million','billion'
 ]);
-
 function findSubjectHead(tokens, start, end) {
   for (let i = start; i <= end; i++) {
     const t = tokens[i];
-    if (t.text.toLowerCase() === 'one' && tokens[i+1] && tokens[i+1].lemma === 'of') {
-      return i;
-    }
+    if (t.text.toLowerCase() === 'one' && tokens[i+1] && tokens[i+1].lemma === 'of') return i;
     if (/^(DT|PRP\$|CD|JJ|JJR|JJS|RB)$/.test(t.tag)) continue;
     if (t.tag === 'WP' || t.tag === 'WDT' || t.tag === 'WRB') return -1;
     if (t.tag === 'IN') {
@@ -57,6 +64,9 @@ function getSubjectNumber(tokens, span) {
   if (headIdx >= 0) {
     const h = tokens[headIdx], w = h.text.toLowerCase();
     if (h.tag === 'PRP') {
+      if (h.person === 1 && h.num === 'sg') return '1sg';
+      if (h.person === 3 && h.num === 'sg') return '3sg';
+      if (h.person !== undefined && h.num !== undefined) return 'other';
       if (w === 'i') return '1sg';
       if (w === 'he' || w === 'she' || w === 'it') return '3sg';
       return 'other';
@@ -68,6 +78,9 @@ function getSubjectNumber(tokens, span) {
   }
   const last = tokens[span.end];
   if (last.tag === 'PRP') {
+    if (last.person === 1 && last.num === 'sg') return '1sg';
+    if (last.person === 3 && last.num === 'sg') return '3sg';
+    if (last.person !== undefined && last.num !== undefined) return 'other';
     const w = last.text.toLowerCase();
     if (w === 'i') return '1sg';
     if (w === 'he' || w === 'she' || w === 'it') return '3sg';
