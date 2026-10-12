@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grammar Formula Highlighters(W12-C patched)</title>
+<title>Grammar Formula Highlighters (W13)</title>
 <style>
   *{box-sizing:border-box}
   :root{--bg:#fafafa;--fg:#222;--muted:#888;--line:#e2e2e2;--panel:#fff;--accent:#4a6ee0;--accent-bg:#eef3ff;--nav-h:68px;--ok:#2e8b57;--fail:#d9534f;--xfail:#e0a800}
@@ -42,6 +42,7 @@
   .tok:hover{border-bottom-color:#666}
   .tok.cont-mid{margin-left:-2px;border-top-left-radius:0;border-bottom-left-radius:0;padding-left:3px}
   .tok.selected{outline:2px solid #444;outline-offset:1px}
+  .tok .prov-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:3px;vertical-align:super}
   .status{margin-top:12px;text-align:center;font-size:13px;color:var(--muted);font-style:italic}
   #legend{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:#444;justify-content:center}
   .legend-item{display:inline-flex;align-items:center;gap:5px}
@@ -152,6 +153,9 @@
   .nav-btn.active{color:var(--accent)}
   .nav-btn.active svg{stroke:var(--accent)}
   .page-hidden{display:none!important}
+  .prov-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#555;justify-content:center;margin-top:8px}
+  .prov-legend .pl{display:inline-flex;align-items:center;gap:4px}
+  .prov-legend .pdot{width:8px;height:8px;border-radius:50%}
   @media(max-width:640px){
     .grid{grid-template-columns:1fr}
     .card .kv{grid-template-columns:110px 1fr}
@@ -216,6 +220,13 @@
   <div id="output"></div>
   <div id="status" class="status" role="status" aria-live="polite" hidden></div>
   <div id="legend"></div>
+  <div id="prov-legend" class="prov-legend" hidden>
+    <span class="pl"><span class="pdot" style="background:#2e8b57"></span>lexicon</span>
+    <span class="pl"><span class="pdot" style="background:#4a6ee0"></span>irregular</span>
+    <span class="pl"><span class="pdot" style="background:#e0a800"></span>affix</span>
+    <span class="pl"><span class="pdot" style="background:#d97706"></span>context</span>
+    <span class="pl"><span class="pdot" style="background:#d9534f"></span>fallback</span>
+  </div>
 
   <div class="grid">
     <div class="card full" id="summary"><h3>Ringkasan Struktur</h3><div class="muted">—</div></div>
@@ -232,10 +243,16 @@
     <p>Halaman pengaturan aplikasi. Pengaturan tambahan akan tersedia di bagian ini pada versi mendatang.</p>
   </div>
   <div class="settings-card">
-    <h3>Test Suite (Gelombang 12-C)</h3>
-    <p style="margin-bottom:12px">Jalankan korpus uji regresi. Target: <code id="target-count">auto</code>. xfail adalah test yang sengaja ditandai gagal sampai gelombang berikutnya.</p>
+    <h3>Test Suite (W13)</h3>
+    <p style="margin-bottom:12px">Jalankan korpus uji regresi. Target: <code id="target-count">auto</code>.</p>
     <button class="test-btn" id="run-tests" type="button">▶ Run Tests</button>
     <div id="test-panel" hidden style="margin-top:16px"></div>
+  </div>
+  <div class="settings-card">
+    <h3>W14 — Dev Helper: OOV Collector</h3>
+    <p style="margin-bottom:12px">Kumpulkan kata di luar kamus dari test corpus. Tempel ke console untuk salin hasil.</p>
+    <button class="test-btn" id="collect-oov" type="button">Collect OOV</button>
+    <pre id="oov-panel" style="margin-top:12px;font-size:12px;background:#f7f7f9;padding:10px;border-radius:8px;max-height:280px;overflow:auto;white-space:pre-wrap" hidden></pre>
   </div>
 </div>
 
@@ -300,17 +317,19 @@
    KONTRAK VERIFIKASI — versi JS (grep target: "_CONTRACT")
    ============================================================ */
 const _CONTRACT = {
-  version: '2.5.1',
-  wave: 'W12-C',
+  version: '2.6.0',
+  wave: 'W13',
   scope: [
-    'perbaikan pass kedua validate (W12-B):',
-    '(a) skip finit didahului TO/MD/aux',
-    '(b) batasi pencarian subjek pada relativizer terakhir'
+    'W12-C: perbaikan pass kedua validate (finit didahului TO/MD/aux; batasi subjek pada relativizer).',
+    'W13: provenance per token, verdict coverage via ratio provenance, kolokasi preposisi baru (depend of → on, arrive to → at/in).'
   ],
   frozen: ['detectTense','chunk'],
   get target() { return `${TEST_CORPUS.length} pass · 0 fail · 0 xfail`; },
   nextWave: {
-    W13: 'refactor RULES, uncertain field asal tag, verdict coverage, preposisi pasangan-pasangan'
+    W14: 'ekspansi lexicon (auto-OOV collector → +200 lema/siklus)',
+    W15: 'klausa majemuk & relative clause lintas-finit',
+    W16: 'kalibrasi confidence & evaluasi corpus eksternal',
+    W17: 'hybrid fallback (statistik untuk OOV)'
   }
 };
 
@@ -443,7 +462,8 @@ for (const f in AUX_HAVE) reg(f, {t:AUX_HAVE[f],lemma:'have',aux:true,form:f==='
 reg(['not','very','always','never','often','sometimes','usually','already','just','too','also','here','there','now','then','soon','quite','rather','really','still','yesterday','today','tomorrow','again','yet','ever','once','twice','only','even','almost','enough','maybe','perhaps','please'], {t:'RB'});
 reg('well', {t:'RB',amb:['JJ']});
 reg('ago', {t:'RB'});
-reg(['go','eat','play','study','read','finish','want','learn','buy','write','move','pass','see','come','take','make','give','get','find','leave','say','tell','think','bring','run','speak','break','begin','like','love','hate','need','help','use','try','start','stop','open','close','put','keep','let','call','ask','answer','watch','listen','walk','talk','live','die','happen','change','carry','hold','turn','show','hear','feel','become','seem','know','mean','understand','remember','forget','wait','meet','pay','send','build','grow','sit','stand','lose','win','fall','rise','sing','swim','teach','catch','drive','fly','draw','wear','drink','sleep','wake','wash','clean','cook','prepare','belong','enjoy','prefer','decide','allow','invite','visit','arrive','return','travel','continue','improve','realize'], {t:'VB',form:'V1'});
+/* W13: tambah 'depend' untuk kolokasi depend on/of */
+reg(['go','eat','play','study','read','finish','want','learn','buy','write','move','pass','see','come','take','make','give','get','find','leave','say','tell','think','bring','run','speak','break','begin','like','love','hate','need','help','use','try','start','stop','open','close','put','keep','let','call','ask','answer','watch','listen','walk','talk','live','die','happen','change','carry','hold','turn','show','hear','feel','become','seem','know','mean','understand','remember','forget','wait','meet','pay','send','build','grow','sit','stand','lose','win','fall','rise','sing','swim','teach','catch','drive','fly','draw','wear','drink','sleep','wake','wash','clean','cook','prepare','belong','enjoy','prefer','decide','allow','invite','visit','arrive','return','travel','continue','improve','realize','depend'], {t:'VB',form:'V1'});
 reg('work', {t:'NN',amb:['VB']});
 reg('water', {t:'NN',amb:['VB']});
 reg(['book','room','school','market','food','morning','evening','night','day','year','week','month','hour','minute','second','time','friend','family','home','house','city','country','world','life','way','thing','people','man','woman','child','student','teacher','author','exam','test','homework','breakfast','lunch','dinner','car','tree','dog','cat','table','chair','door','window','hand','head','eye','face','money','job','idea','problem','question','answer','story','word','name','number','part','place','church','office','hospital','football','basketball','sport','game','music','song','movie','language','letter','email','message','phone','computer','internet','island','mountain','river','sea','ocean','sky','sun','moon','star','air','fire','earth','garden','park','street','road','village','town','area','size','type','kind','form','color','shape','sound','taste','smell','dream','plan','reason','result','effect','cause','purpose','goal','future','past','present'], {t:'NN'});
@@ -824,10 +844,43 @@ function fixAmbiguousIs(tokens) {
   }
 }
 
+/* W13: provenance weight table */
+const PROVENANCE_WEIGHT = {
+  lexicon: 1.0,
+  irregular: 0.95,
+  affix: 0.8,
+  context: 0.65,
+  fallback: 0.4
+};
+const PROVENANCE_COLOR = {
+  lexicon: '#2e8b57',
+  irregular: '#4a6ee0',
+  affix: '#e0a800',
+  context: '#d97706',
+  fallback: '#d9534f'
+};
+
+/* W13: classify each token's provenance after tagging. */
+function tagWithProvenance(tokens) {
+  for (const t of tokens) {
+    let prov;
+    if (t.unknown) prov = 'fallback';
+    else if (t.uncertain) prov = 'context';
+    else if (t.isCont) prov = 'lexicon';
+    else if (t.tag === 'PUNCT') prov = 'lexicon';
+    else if (IRREG[t.text.toLowerCase()]) prov = 'irregular';
+    else if (LEX[t.text.toLowerCase()]) prov = 'lexicon';
+    else prov = 'affix';
+    t.provenance = prov;
+    t.confidence = PROVENANCE_WEIGHT[prov];
+  }
+}
+
 function tagAll(tokens) {
   for (let i = 0; i < tokens.length; i++) tagOne(tokens, i);
   fixAmbiguousIs(tokens);
   markAux(tokens);
+  tagWithProvenance(tokens); /* W13 */
 }
 
 /* ============================================================
@@ -1141,7 +1194,28 @@ function detectTransferPatterns(tokens) {
   return issues;
 }
 
-/* [W12-B] Helper: cek S-V agreement untuk satu finit verb dengan subjek tertentu. */
+/* W13: prep collocations baru — depend of, arrive to */
+const PREP_COLLOCATIONS = [
+  { verb: 'depend', bad: 'of', good: 'on', glossId: 'transfer-depend-on',
+    msg: (v,b,g) => `"${v}" diikuti "${g}", bukan "${b}". Contoh: "depend ${g} the weather".` },
+  { verb: 'arrive', bad: 'to', good: 'at/in', glossId: 'transfer-arrive-at',
+    msg: (v,b,g) => `"${v}" diikuti "${g}" (at untuk tempat kecil, in untuk tempat besar), bukan "${b}". Contoh: "arrive at the station".` }
+];
+function detectPrepCollocations(tokens) {
+  const out = [];
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const t = tokens[i], n = tokens[i+1];
+    const tlem = (t.lemma || t.text).toLowerCase();
+    const nlem = (n.lemma || n.text).toLowerCase();
+    for (const c of PREP_COLLOCATIONS) {
+      if (tlem === c.verb && nlem === c.bad) {
+        out.push({level:'error', glossId: c.glossId, msg: c.msg(t.text, n.text, c.good)});
+      }
+    }
+  }
+  return out;
+}
+
 function checkAgreementForVerb(tokens, subjSpan, vidx) {
   if (!subjSpan) return null;
   const finite = tokens[vidx];
@@ -1191,7 +1265,6 @@ function checkAgreementForVerb(tokens, subjSpan, vidx) {
   return null;
 }
 
-/* [W12-B] Helper: deteksi kalimat yang kehilangan kopula "be". */
 function detectMissingCopula(tokens) {
   const hasFiniteVerb = tokens.some(t => /^(VB|VBD|VBG|VBN|VBP|VBZ|MD)$/.test(t.tag));
   if (hasFiniteVerb) return null;
@@ -1275,10 +1348,6 @@ function validate(tokens, structureOrList) {
     }
   }
 
-  /* [W12-B] Pass kedua: finit verb ke-2+ per klausa.
-     [W12-C] Perbaikan:
-     (a) skip finit yang didahului TO/MD/aux.
-     (b) batasi pencarian subjek pada relativizer terakhir. */
   for (const structure of structures) {
     if (!structure) continue;
     const range = structure.range || {start: 0, end: tokens.length - 1};
@@ -1386,6 +1455,10 @@ function validate(tokens, structureOrList) {
   const transferIssues = detectTransferPatterns(tokens);
   for (const ti of transferIssues) issues.push(ti);
 
+  /* W13: prep collocation baru */
+  const prepIssues = detectPrepCollocations(tokens);
+  for (const pi of prepIssues) issues.push(pi);
+
   if (!issues.length) {
     const meaningful = tokens.filter(t => t.tag !== 'PUNCT');
     const unknownCount = meaningful.filter(t => t.uncertain || t.unknown).length;
@@ -1466,7 +1539,8 @@ function explainWord(idx, tokens, spans, structure) {
   if (!form && /^VB/.test(t.tag)) {
     form = {VBD:'V2', VBN:'V3', VBG:'V-ing', VBZ:'V1 + s', VBP:'V1'}[t.tag];
   }
-  return Object.assign(info, {label:TAG_LABEL[t.tag] || t.tag, form, aux:t.aux, reason, ambiguous:t.amb || []});
+  return Object.assign(info, {label:TAG_LABEL[t.tag] || t.tag, form, aux:t.aux, reason, ambiguous:t.amb || [],
+    provenance: t.provenance, confidence: t.confidence});
 }
 
 /* ============================================================
@@ -1499,7 +1573,7 @@ const TENSE_COLORS = {
    ============================================================ */
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const $ = id => document.getElementById(id);
-const STATE = {tokens:[], spans:[], structure:{}, grammar:[], issues:[], mode:'pos', selected:null};
+const STATE = {tokens:[], spans:[], structure:{}, grammar:[], issues:[], mode:'pos', selected:null, showProvenance:true};
 const EXPAND_STATE = new Map();
 
 function colorForToken(idx, mode) {
@@ -1522,8 +1596,13 @@ function renderSentence() {
     if (t.contEnd && !t.contStart) cls.push('cont-mid');
     if (!t.contEnd && t.contStart) cls.push('cont-mid');
     if (STATE.selected === i) cls.push('selected');
-    return `<span class="${cls.join(' ')}" data-idx="${i}" ${style} title="${esc((TAG_LABEL[t.tag]||t.tag) + (t.lemma ? ' · '+t.lemma : ''))}">${esc(t.text)}</span>`;
+    const provDot = (STATE.showProvenance && t.provenance && t.tag !== 'PUNCT')
+      ? `<span class="prov-dot" style="background:${PROVENANCE_COLOR[t.provenance]}" title="provenance: ${t.provenance} (${Math.round((t.confidence||0)*100)}%)"></span>`
+      : '';
+    return `<span class="${cls.join(' ')}" data-idx="${i}" ${style} title="${esc((TAG_LABEL[t.tag]||t.tag) + (t.lemma ? ' · '+t.lemma : '') + (t.provenance ? ' · '+t.provenance : ''))}">${esc(t.text)}${provDot}</span>`;
   }).join(' ');
+  const pl = $('prov-legend');
+  if (pl) pl.hidden = !STATE.showProvenance;
 }
 
 function renderLegend() {
@@ -1567,7 +1646,18 @@ function renderSummary() {
   const isQ = tokens.some(t => t.text === '?');
   const isImp = !s.subject && s.vp && s.vp.start === 0;
   rows.push(['Jenis kalimat', isQ ? 'Kalimat tanya' : isImp ? 'Kalimat perintah' : 'Kalimat pernyataan', isQ ? 'interrogative' : null]);
-  $('summary').innerHTML = `<h3>Ringkasan Struktur</h3><dl class="kv">${rows.map(([k,v,gid]) => `<dt>${gid ? glossLink(gid, k) : esc(k)}</dt><dd>${esc(v||'—')}</dd>`).join('')}</dl>`;
+
+  /* W13: ringkasan provenance */
+  const meaningful = tokens.filter(t => t.tag !== 'PUNCT');
+  const counts = {lexicon:0, irregular:0, affix:0, context:0, fallback:0};
+  meaningful.forEach(t => { if (t.provenance) counts[t.provenance]++; });
+  const totalM = meaningful.length || 1;
+  const confSum = meaningful.reduce((a,t) => a + (t.confidence||0), 0);
+  const confAvg = Math.round((confSum / totalM) * 100);
+
+  $('summary').innerHTML = `<h3>Ringkasan Struktur</h3><dl class="kv">${rows.map(([k,v,gid]) => `<dt>${gid ? glossLink(gid, k) : esc(k)}</dt><dd>${esc(v||'—')}</dd>`).join('')}</dl>`
+    + `<p class="expl"><strong>Keyakinan rata-rata:</strong> ${confAvg}% · `
+    + `lexicon=${counts.lexicon}, irregular=${counts.irregular}, affix=${counts.affix}, context=${counts.context}, fallback=${counts.fallback}</p>`;
 }
 
 function renderDetail() {
@@ -1586,6 +1676,7 @@ function renderDetail() {
   if (info.aux) html += `<dt>Peran</dt><dd>${glossLink('auxiliary-verb', 'Kata bantu')}</dd>`;
   if (wf.phraseRole) html += `<dt>Fungsi dalam kalimat</dt><dd>${glossLink(wf.phraseGloss, wf.phraseRole)}</dd>`;
   if (wf.tense) html += `<dt>Waktu (Tense)</dt><dd>${glossLink(tenseGloss, wf.tense.name)} — <code>${esc(wf.tense.formula)}</code></dd>`;
+  if (info.provenance) html += `<dt>Asal tag (W13)</dt><dd><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${PROVENANCE_COLOR[info.provenance]};margin-right:5px"></span><code>${esc(info.provenance)}</code> · keyakinan ${Math.round((info.confidence||0)*100)}%</dd>`;
   html += `</dl><p class="expl">${esc(info.reason)}</p>`;
   if (wf.span) {
     const pg = PHRASE_TO_GLOSSARY[wf.span.type];
@@ -1599,7 +1690,8 @@ function renderValidation() {
   if (!STATE.issues.length) { $('validation').innerHTML = `<h3>Pemeriksaan Grammar</h3><div class="muted">—</div>`; return; }
   renderExpandable('validation', STATE.issues, i => {
     const btn = i.glossId ? ` <button type="button" class="gloss-link" data-gloss="${esc(i.glossId)}" style="font-size:11.5px">Pelajari aturannya</button>` : '';
-    return `<div class="issue ${i.level}">${esc(i.msg)}${btn}</div>`;
+    const verdictTag = i.verdict ? ` <code style="font-size:11px">verdict: ${esc(i.verdict)}</code>` : '';
+    return `<div class="issue ${i.level}">${esc(i.msg)}${verdictTag}${btn}</div>`;
   });
   $('validation').innerHTML = `<h3>Pemeriksaan Grammar</h3>` + $('validation').innerHTML;
 }
@@ -1786,7 +1878,7 @@ const PHRASE_TO_GLOSSARY = {
 const FORM_TO_GLOSSARY = {'V1':'v1','V2':'v2','V3':'v3','V-ing':'v-ing','V-s':'v-s'};
 
 /* ============================================================
-   18. GRAMMAR GLOSSARY — 67 entri
+   18. GRAMMAR GLOSSARY
    ============================================================ */
 const GLOSSARY_CATEGORIES = [
   {id:'pos', name:'Jenis Kata'},
@@ -2444,6 +2536,7 @@ const GRAMMAR_GLOSSARY = {
     related:['preposition','transfer-discuss-about']},
   'transfer-since-for': {id:'transfer-since-for', name:'since + durasi (pola keliru)', abbr:'since + durasi', category:'transfer',
     definition:'Pola keliru: "since" diikuti ekspresi durasi (mis. "since 2 hours"). Dalam bahasa Indonesia, "sejak" dan "selama" sering tertukar; dalam bahasa Inggris, "since" untuk titik waktu (since 2020, since Monday) dan "for" untuk durasi (for 2 hours).',
+    simple:'"Since" + titik waktu. "For" + durasi. SALAH: since 2 years. BENAR: for 2 years.',
     fungsi:'Mengingatkan perbedaan "since" (titik waktu) dan "for" (durasi).',
     identifikasi:'Lihat "since" yang diikuti angka + satuan waktu (hour, day, week, month, year).',
     rumus:'SALAH: since + durasi → BENAR: for + durasi / since + titik waktu',
@@ -2456,6 +2549,7 @@ const GRAMMAR_GLOSSARY = {
     related:['present-perfect','preposition','present-perfect-continuous']},
   'missing-article': {id:'missing-article', name:'Missing Article (Kata Penunjuk Hilang)', abbr:'a/an/the', category:'transfer',
     definition:'Kesalahan karena kata benda tunggal yang bisa dihitung (countable) dipakai tanpa kata penunjuk "a", "an", atau "the". Bahasa Indonesia tidak punya article, jadi pelajar sering lupa menambahkannya.',
+    simple:'Kata benda tunggal butuh "a", "an", atau "the". SALAH: I read book. BENAR: I read a book.',
     fungsi:'Mengingatkan bahwa kata benda countable tunggal dalam bahasa Inggris hampir selalu butuh determiner.',
     identifikasi:'Lihat kata benda tunggal (NN) yang tidak didahului "a", "an", "the", "my", "this", atau kata bilangan.',
     rumus:'(a/an/the/my/this/…) + kata benda tunggal',
@@ -2465,7 +2559,34 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'BENAR: <u>The</u> book is on the table.', catatan:'"the" untuk kata benda yang sudah spesifik.'}
     ],
     perbedaan:'Countable tunggal butuh determiner. Uncountable (water, advice) dan plural (books) bisa tanpa determiner.',
-    related:['determiner','noun','noun-phrase']}
+    related:['determiner','noun','noun-phrase']},
+
+  /* W13: dua entri baru */
+  'transfer-depend-on': {id:'transfer-depend-on', name:'depend of (pola keliru)', abbr:'depend of', category:'transfer',
+    definition:'Pola keliru: "depend" diikuti "of". Dalam bahasa Inggris, kata kerja "depend" selalu diikuti preposisi "on". Dalam bahasa Indonesia, "tergantung pada/dari" bisa membingungkan pelajar.',
+    simple:'"Depend" selalu pakai "on". SALAH: depend of. BENAR: depend on.',
+    fungsi:'Mengingatkan bahwa "depend" adalah kata kerja yang berpasangan tetap dengan preposisi "on".',
+    identifikasi:'Lihat "depend" yang langsung diikuti "of".',
+    rumus:'SALAH: depend of → BENAR: depend on',
+    contoh:[
+      {kalimat:'SALAH: It <u>depends of</u> the weather.', catatan:'Gunakan "depends on".'},
+      {kalimat:'BENAR: It <u>depends on</u> the weather.', catatan:'"depend on" adalah pasangan tetap.'}
+    ],
+    perbedaan:'"Depend on" berbeda dari "depend of" yang tidak ada. Sinonim "rely on" juga pakai "on".',
+    related:['preposition','verb','transfer-discuss-about']},
+  'transfer-arrive-at': {id:'transfer-arrive-at', name:'arrive to (pola keliru)', abbr:'arrive to', category:'transfer',
+    definition:'Pola keliru: "arrive" diikuti "to". Bahasa Inggris memakai "arrive at" (tempat kecil: stasiun, bandara) atau "arrive in" (tempat besar: kota, negara).',
+    simple:'"Arrive" pakai "at" atau "in", bukan "to". SALAH: arrive to. BENAR: arrive at/in.',
+    fungsi:'Mengingatkan bahwa "arrive" tidak berpasangan dengan "to", melainkan "at" atau "in".',
+    identifikasi:'Lihat "arrive" yang langsung diikuti "to".',
+    rumus:'SALAH: arrive to → BENAR: arrive at (tempat kecil) / arrive in (tempat besar)',
+    contoh:[
+      {kalimat:'SALAH: We <u>arrived to</u> the station.', catatan:'Gunakan "arrived at the station".'},
+      {kalimat:'BENAR: We <u>arrived at</u> the station.', catatan:'Tempat spesifik pakai "at".'},
+      {kalimat:'BENAR: She <u>arrived in</u> Jakarta.', catatan:'Kota/negara pakai "in".'}
+    ],
+    perbedaan:'"Arrive at" untuk titik spesifik. "Arrive in" untuk area luas. Bandingkan dengan "get to" yang justru pakai "to".',
+    related:['preposition','verb','transfer-discuss-about']}
 };
 
 /* ============================================================
@@ -2887,7 +3008,7 @@ const TEST_CORPUS = [
   { group: 'L', s: 'We discuss the topic.', noIssue: ['transfer-discuss-about'] },
   { group: 'L', s: 'She is married to him.', noIssue: ['transfer-married-with'] },
 
-  /* Kelompok M: W9 fix regresi & kontradiksi */
+  /* Kelompok M */
   { group: 'M', s: 'The books which I bought yesterday were expensive.', noIssue: ['subject-verb-agreement'] },
   { group: 'M', s: 'The people who live next door are nice.', noIssue: ['subject-verb-agreement'] },
   { group: 'M', s: 'The number of students is increasing.', noIssue: ['subject-verb-agreement'] },
@@ -2901,7 +3022,7 @@ const TEST_CORPUS = [
   { group: 'M', s: 'I like to read books.', noIssue: ['transfer-to-ing'] },
   { group: 'M', s: 'She likes to reading.', issue: ['transfer-to-ing'] },
 
-  /* Kelompok N: W10 */
+  /* Kelompok N */
   { group: 'N', s: 'One of the students is here.', noIssue: ['subject-verb-agreement'] },
   { group: 'N', s: 'One of the students are here.', issue: ['subject-verb-agreement'] },
   { group: 'N', s: 'One of my friends is a doctor.', noIssue: ['subject-verb-agreement'] },
@@ -2921,7 +3042,7 @@ const TEST_CORPUS = [
   { group: 'N', s: 'Books are here.', noIssue: ['missing-article'] },
   { group: 'N', s: 'School is fun.', noIssue: ['missing-article'] },
 
-  /* Kelompok O: W11 data integrity */
+  /* Kelompok O */
   { group: 'O', s: '[data] 15 core glossary entries have simple field', dataCheck: (fails) => {
     const ids = ['noun','verb','v1','v2','v3','simple-present','simple-past','simple-future',
                  'present-continuous','present-perfect',
@@ -2955,7 +3076,7 @@ const TEST_CORPUS = [
     }
   }},
 
-  /* Kelompok P: W12-A */
+  /* Kelompok P */
   { group: 'P', s: 'I like football.', noIssue: ['missing-article'] },
   { group: 'P', s: 'Football is fun.', noIssue: ['missing-article'] },
   { group: 'P', s: 'He plays football.', noIssue: ['missing-article'] },
@@ -2969,7 +3090,7 @@ const TEST_CORPUS = [
   { group: 'P', s: 'The movie is exciting.', tense: ['Simple Present (copula)'], noIssue: ['subject-verb-agreement'] },
   { group: 'P', s: 'She is interested in history.', tense: ['Simple Present (copula)'], noIssue: ['subject-verb-agreement'] },
 
-  /* Kelompok Q: W12-B multi-finite verb & missing copula */
+  /* Kelompok Q */
   { group: 'Q', s: 'The book I bought were expensive.', issue: ['subject-verb-agreement'] },
   { group: 'Q', s: 'I think he are right.', issue: ['subject-verb-agreement'] },
   { group: 'Q', s: 'I think he is right.', noIssue: ['subject-verb-agreement'] },
@@ -2980,7 +3101,33 @@ const TEST_CORPUS = [
   { group: 'Q', s: 'She is very beautiful.', noIssue: ['subject-verb-agreement'] },
   { group: 'Q', s: 'My father is an engineer.', noIssue: ['subject-verb-agreement'] },
   { group: 'Q', s: 'He is tall.', noIssue: ['subject-verb-agreement'] },
-  { group: 'Q', s: 'asdf qwer zxcv', verdict: 'abstain' }
+  { group: 'Q', s: 'asdf qwer zxcv', verdict: 'abstain' },
+
+  /* Kelompok R: W13 provenance & prep collocations */
+  { group: 'R', s: 'I depend of my parents.', issue: ['transfer-depend-on'] },
+  { group: 'R', s: 'It depends of the weather.', issue: ['transfer-depend-on'] },
+  { group: 'R', s: 'I depend on my parents.', noIssue: ['transfer-depend-on'] },
+  { group: 'R', s: 'We arrived to the station.', issue: ['transfer-arrive-at'] },
+  { group: 'R', s: 'She arrived to Jakarta.', issue: ['transfer-arrive-at'] },
+  { group: 'R', s: 'We arrived at the station.', noIssue: ['transfer-arrive-at'] },
+  { group: 'R', s: 'She arrived in Jakarta.', noIssue: ['transfer-arrive-at'] },
+  { group: 'R', s: 'The cat sits on the mat.', verdict: 'clean' },
+  { group: 'R', s: 'She very happy.', verdict: 'abstain' },
+  { group: 'R', s: '[data] provenance present on every non-punct token', dataCheck: (fails) => {
+    const toks = tokenize('She reads a book.');
+    tagAll(toks);
+    for (const t of toks) {
+      if (t.tag === 'PUNCT') continue;
+      if (!t.provenance) fails.push(`token "${t.text}" tanpa provenance`);
+      if (typeof t.confidence !== 'number') fails.push(`token "${t.text}" tanpa confidence`);
+    }
+  }},
+  { group: 'R', s: '[data] lexicon tokens have confidence 1.0', dataCheck: (fails) => {
+    const toks = tokenize('She reads a book.');
+    tagAll(toks);
+    const she = toks.find(t => t.text === 'She');
+    if (!she || she.provenance !== 'lexicon') fails.push(`"She" bukan lexicon (dapat ${she && she.provenance})`);
+  }}
 ];
 
 function runOneTest(tc) {
@@ -3092,6 +3239,17 @@ function runTests() {
   console.log(`[TEST] ${pass}/${results.length} pass, ${fail} real failures`);
 }
 
+/* W14 helper: kumpulkan OOV dari test corpus */
+function collectOOV() {
+  const oov = new Set();
+  for (const tc of TEST_CORPUS) {
+    const toks = tokenize(tc.s);
+    tagAll(toks);
+    toks.forEach(t => { if (t.provenance === 'fallback') oov.add(t.text.toLowerCase()); });
+  }
+  return [...oov].sort();
+}
+
 /* ============================================================
    24. INIT
    ============================================================ */
@@ -3099,6 +3257,14 @@ const tcEl = $('target-count');
 if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' pass · 0 fail · 0 xfail';
 
 $('run-tests').addEventListener('click', runTests);
+const collectBtn = $('collect-oov');
+if (collectBtn) collectBtn.addEventListener('click', () => {
+  const oov = collectOOV();
+  const panel = $('oov-panel');
+  panel.hidden = false;
+  panel.textContent = oov.length ? oov.join('\n') : '(tidak ada OOV — corpus sepenuhnya dalam kamus)';
+  console.log('[OOV]', oov);
+});
 initLibraryEvents();
 initBottomNav();
 initTextViewEvents();
