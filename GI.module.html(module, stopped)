@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grammar Identification</title>
+<title>Grammar Formula Highlighters (W15c)</title>
 <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
 
 <div id="page-home">
-  <h1>Grammar Identification</h1>
+  <h1>Grammar Formula Highlighter</h1>
   <p class="sub">Analisis grammar Inggris interaktif — klik kata atau frasa untuk melihat penjelasannya.</p>
 
   <div class="search-box">
@@ -49,6 +49,13 @@
   <div id="output"></div>
   <div id="status" class="status" role="status" aria-live="polite" hidden></div>
   <div id="legend"></div>
+  <div id="prov-legend" class="prov-legend" hidden>
+    <span class="pl"><span class="pdot" style="background:#2e8b57"></span>lexicon</span>
+    <span class="pl"><span class="pdot" style="background:#4a6ee0"></span>irregular</span>
+    <span class="pl"><span class="pdot" style="background:#e0a800"></span>affix</span>
+    <span class="pl"><span class="pdot" style="background:#d97706"></span>context</span>
+    <span class="pl"><span class="pdot" style="background:#d9534f"></span>fallback</span>
+  </div>
 
   <div class="grid">
     <div class="card full" id="summary"><h3>Ringkasan Struktur</h3><div class="muted">—</div></div>
@@ -62,13 +69,18 @@
   <h2>Settings</h2>
   <div class="settings-card">
     <h3>Tentang halaman ini</h3>
-    <p>Halaman pengaturan aplikasi. Pengaturan tambahan akan tersedia di bagian ini pada versi mendatang.</p>
+    <p>Halaman pengaturan aplikasi.</p>
   </div>
   <div class="settings-card">
-    <h3>Test Suite (Gelombang 13)</h3>
-    <p style="margin-bottom:12px">Jalankan korpus uji regresi. Target: <code id="target-count">auto</code>. xfail adalah test yang sengaja ditandai gagal sampai gelombang berikutnya.</p>
+    <h3>Test Suite (W15c)</h3>
+    <p style="margin-bottom:12px">Target: <code id="target-count">auto</code>.</p>
     <button class="test-btn" id="run-tests" type="button">▶ Run Tests</button>
     <div id="test-panel" hidden style="margin-top:16px"></div>
+  </div>
+  <div class="settings-card">
+    <h3>OOV Collector</h3>
+    <button class="test-btn" id="collect-oov" type="button">Collect OOV</button>
+    <pre id="oov-panel" style="margin-top:12px;font-size:12px;background:#f7f7f9;padding:10px;border-radius:8px;max-height:280px;overflow:auto;white-space:pre-wrap" hidden></pre>
   </div>
 </div>
 
@@ -93,7 +105,7 @@
     </header>
     <div class="lib-toolbar">
       <div class="lib-search-wrap">
-        <input id="lib-search" class="lib-search" type="search" placeholder="Cari istilah atau singkatan... (mis. NP, VBN, kata bantu, lampau)" aria-label="Cari istilah grammar">
+        <input id="lib-search" class="lib-search" type="search" placeholder="Cari istilah atau singkatan..." aria-label="Cari istilah grammar">
       </div>
       <div class="lib-cats" id="lib-cats" role="tablist" aria-label="Kategori istilah"></div>
     </div>
