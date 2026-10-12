@@ -2935,61 +2935,65 @@ function initBottomNav() {
 }
 
 /* ============================================================
-   21. GLOBAL HANDLERS
+   21. GLOBAL HANDLERS  (W14a: dibungkus guard agar headless-safe)
    ============================================================ */
-document.addEventListener('click', e => {
-  const el = e.target.closest('[data-gloss]');
-  if (!el) return;
-  e.preventDefault();
-  openGlossaryTerm(el.dataset.gloss);
-});
-document.addEventListener('click', e => {
-  const btn = e.target.closest('[data-expand]');
-  if (!btn) return;
-  const id = btn.dataset.expand;
-  EXPAND_STATE.set(id, !EXPAND_STATE.get(id));
-  if (id === 'validation') renderValidation();
-  else if (id === 'patterns') renderPatterns();
-});
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-gloss]');
+    if (!el) return;
+    e.preventDefault();
+    openGlossaryTerm(el.dataset.gloss);
+  });
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-expand]');
+    if (!btn) return;
+    const id = btn.dataset.expand;
+    EXPAND_STATE.set(id, !EXPAND_STATE.get(id));
+    if (id === 'validation') renderValidation();
+    else if (id === 'patterns') renderPatterns();
+  });
+}
 
 /* ============================================================
    22. MAIN EVENT BINDING
    ============================================================ */
-const inputEl = $('input');
-$('go').addEventListener('click', () => analyze());
-$('reset').addEventListener('click', () => {
-  inputEl.value = '';
-  autoGrowInput();
-  Object.assign(STATE, {tokens:[], spans:[], structure:{}, grammar:[], issues:[], selected:null});
-  EXPAND_STATE.clear();
-  $('output').innerHTML = '';
-  $('legend').innerHTML = '';
-  $('status').hidden = true;
-  $('summary').innerHTML = `<h3>Ringkasan Struktur</h3><div class="muted">—</div>`;
-  $('detail').innerHTML = `<h3>Detail Kata</h3><div class="muted">Klik sebuah kata atau frasa di kalimat di atas.</div>`;
-  $('validation').innerHTML = `<h3>Pemeriksaan Grammar</h3><div class="muted">—</div>`;
-  $('patterns').innerHTML = `<h3>Pola Grammar yang Terdeteksi</h3><div class="muted">—</div>`;
-});
-inputEl.addEventListener('input', autoGrowInput);
-inputEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); analyze(); }
-});
-$('tabs').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-mode]');
-  if (!btn) return;
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  STATE.mode = btn.dataset.mode;
-  renderSentence();
-  renderLegend();
-});
-$('output').addEventListener('click', e => {
-  const el = e.target.closest('.tok');
-  if (!el) return;
-  STATE.selected = parseInt(el.dataset.idx, 10);
-  renderSentence();
-  renderDetail();
-});
+if (typeof document !== 'undefined' && document.getElementById) {
+  const inputEl = $('input');
+  $('go').addEventListener('click', () => analyze());
+  $('reset').addEventListener('click', () => {
+    inputEl.value = '';
+    autoGrowInput();
+    Object.assign(STATE, {tokens:[], spans:[], structure:{}, grammar:[], issues:[], selected:null});
+    EXPAND_STATE.clear();
+    $('output').innerHTML = '';
+    $('legend').innerHTML = '';
+    $('status').hidden = true;
+    $('summary').innerHTML = `<h3>Ringkasan Struktur</h3><div class="muted">—</div>`;
+    $('detail').innerHTML = `<h3>Detail Kata</h3><div class="muted">Klik sebuah kata atau frasa di kalimat di atas.</div>`;
+    $('validation').innerHTML = `<h3>Pemeriksaan Grammar</h3><div class="muted">—</div>`;
+    $('patterns').innerHTML = `<h3>Pola Grammar yang Terdeteksi</h3><div class="muted">—</div>`;
+  });
+  inputEl.addEventListener('input', autoGrowInput);
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); analyze(); }
+  });
+  $('tabs').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    STATE.mode = btn.dataset.mode;
+    renderSentence();
+    renderLegend();
+  });
+  $('output').addEventListener('click', e => {
+    const el = e.target.closest('.tok');
+    if (!el) return;
+    STATE.selected = parseInt(el.dataset.idx, 10);
+    renderSentence();
+    renderDetail();
+  });
+}
 
 /* ============================================================
    23. TEST CORPUS
@@ -3415,12 +3419,15 @@ function renderTestResults(results) {
 
 function runTests() {
   const results = TEST_CORPUS.map(runOneTest);
-  renderTestResults(results);
-  $('test-panel').hidden = false;
+  if (typeof document !== 'undefined' && document.getElementById && $('test-panel')) {
+    renderTestResults(results);
+    $('test-panel').hidden = false;
+  }
   const pass = results.filter(r => r.pass).length;
   const xfail = results.filter(r => !r.pass && r.tc.xfail).length;
   const fail = results.filter(r => !r.pass && !r.tc.xfail).length;
   console.log(`[TEST] ${pass} pass, ${xfail} xfail, ${fail} real failures`);
+  return { pass, xfail, fail, total: results.length };
 }
 
 function collectOOV() {
@@ -3437,23 +3444,41 @@ function collectOOV() {
 /* ============================================================
    24. INIT
    ============================================================ */
-const tcEl = $('target-count');
-if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · target: 0 hard fail';
+/* ============================================================
+   25. EXPORTS — W14a: bundle dapat diuji headless (Node).
+   Di browser, window.GI === export object yang sama.
+   ============================================================ */
+const GI_EXPORTS = {
+  _CONTRACT, tokenize, tagOne, tagAll, markAux, chunk, splitFiniteVPs,
+  splitClauses, analyzeStructure, detectTense, detectGrammar,
+  detectTransferPatterns, validate, checkAgreementForVerb, detectMissingCopula,
+  runOneTest, runTests, collectOOV,
+  TEST_CORPUS, GRAMMAR_GLOSSARY, GLOSSARY_CATEGORIES, LEX, IRREG, C,
+  TAG_TO_GLOSSARY, PHRASE_TO_GLOSSARY, FORM_TO_GLOSSARY, STATE
+};
+if (typeof window !== 'undefined') window.GI = GI_EXPORTS;
+if (typeof module !== 'undefined' && module.exports) module.exports = GI_EXPORTS;
 
-$('run-tests').addEventListener('click', runTests);
-const collectBtn = $('collect-oov');
-if (collectBtn) collectBtn.addEventListener('click', () => {
-  const oov = collectOOV();
-  const panel = $('oov-panel');
-  panel.hidden = false;
-  panel.textContent = oov.length ? oov.join('\n') : '(tidak ada OOV)';
-  console.log('[OOV]', oov);
-});
-initLibraryEvents();
-initBottomNav();
-initTextViewEvents();
-autoGrowInput();
-analyze({ silent: true });
+/* ---- init DOM hanya bila berjalan di browser ---- */
+if (typeof document !== 'undefined' && document.getElementById) {
+  const tcEl = $('target-count');
+  if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · target: 0 hard fail';
+
+  $('run-tests').addEventListener('click', runTests);
+  const collectBtn = $('collect-oov');
+  if (collectBtn) collectBtn.addEventListener('click', () => {
+    const oov = collectOOV();
+    const panel = $('oov-panel');
+    panel.hidden = false;
+    panel.textContent = oov.length ? oov.join('\n') : '(tidak ada OOV)';
+    console.log('[OOV]', oov);
+  });
+  initLibraryEvents();
+  initBottomNav();
+  initTextViewEvents();
+  autoGrowInput();
+  analyze({ silent: true });
+}
 </script>
 </body>
 </html>
