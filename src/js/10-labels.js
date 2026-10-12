@@ -31,7 +31,6 @@ function wordFunction(idx, tokens, spans, structure) {
   else if (span?.type === 'GerP') { phraseRole = 'Kelompok kata kerja -ing'; phraseGloss = 'gerund-phrase'; }
   else if (span?.type === 'AdvP') { phraseRole = 'Keterangan'; phraseGloss = 'adverb-phrase'; }
   else if (span?.type === 'AdjP') { phraseRole = 'Kelompok kata sifat'; phraseGloss = 'adjective-phrase'; }
-
   const tense = (structure.grammar || []).find(g => idx >= g.span.start && idx <= g.span.end);
   return {phraseRole, phraseGloss, span, tense};
 }
@@ -48,5 +47,6 @@ function explainWord(idx, tokens, spans, structure) {
   if (!form && /^VB/.test(t.tag)) {
     form = {VBD:'V2', VBN:'V3', VBG:'V-ing', VBZ:'V1 + s', VBP:'V1'}[t.tag];
   }
-  return Object.assign(info, {label:TAG_LABEL[t.tag] || t.tag, form, aux:t.aux, reason, ambiguous:t.amb || []});
+  return Object.assign(info, {label:TAG_LABEL[t.tag] || t.tag, form, aux:t.aux, reason, ambiguous:t.amb || [],
+    provenance: t.provenance, confidence: t.confidence});
 }
