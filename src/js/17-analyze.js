@@ -18,9 +18,7 @@ function isLowEndDevice() {
     const cores = navigator.hardwareConcurrency;
     const mem = navigator.deviceMemory;
     if (cores === undefined && mem === undefined) return false;
-    const lowCores = cores !== undefined && cores <= 4;
-    const lowMem = mem !== undefined && mem <= 4;
-    return lowCores || lowMem;
+    return (cores !== undefined && cores <= 4) || (mem !== undefined && mem <= 4);
   } catch { return false; }
 }
 
@@ -28,7 +26,6 @@ async function analyze(opts = {}) {
   const silent = opts.silent === true;
   if (_analyzing) return;
   _analyzing = true;
-
   const goBtn = $('go'), pageHome = $('page-home'), loadingEl = $('loading'), statusEl = $('status');
   if (goBtn) goBtn.disabled = true;
   if (!silent) {
@@ -36,17 +33,13 @@ async function analyze(opts = {}) {
     if (loadingEl) loadingEl.hidden = false;
     if (pageHome) pageHome.classList.add('analyzing');
   }
-
   const startedAt = performance.now();
   const MIN_LOADING_MS = 550;
-
   try {
     await nextPaint();
     if (isLowEndDevice()) { await idleYield(300); await sleep(180); }
     else { await idleYield(120); }
-
     const text = $('input').value;
-
     const tokens = tokenize(text);
     await nextPaint();
     tagAll(tokens);
@@ -68,14 +61,12 @@ async function analyze(opts = {}) {
     if (mainClauseIdx < 0) mainClauseIdx = 0;
     const structure = structures[mainClauseIdx] || {vps:[], subject:null, object:null, adverbials:[]};
     structure.grammar = grammar;
-
     STATE.tokens = tokens;
     STATE.spans = spans;
     STATE.structure = structure;
     STATE.grammar = grammar;
     STATE.issues = issues;
     STATE.selected = null;
-
     if (!silent) {
       const elapsed = performance.now() - startedAt;
       if (elapsed < MIN_LOADING_MS) await sleep(MIN_LOADING_MS - elapsed);
