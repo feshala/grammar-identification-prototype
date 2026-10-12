@@ -59,6 +59,27 @@ function detectTransferPatterns(tokens) {
   return issues;
 }
 
+const PREP_COLLOCATIONS = [
+  { verb: 'depend', bad: 'of', good: 'on', glossId: 'transfer-depend-on',
+    msg: (v,b,g) => `"${v}" diikuti "${g}", bukan "${b}". Contoh: "depend ${g} the weather".` },
+  { verb: 'arrive', bad: 'to', good: 'at/in', glossId: 'transfer-arrive-at',
+    msg: (v,b,g) => `"${v}" diikuti "${g}" (at untuk tempat kecil, in untuk tempat besar), bukan "${b}". Contoh: "arrive at the station".` }
+];
+function detectPrepCollocations(tokens) {
+  const out = [];
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const t = tokens[i], n = tokens[i+1];
+    const tlem = (t.lemma || t.text).toLowerCase();
+    const nlem = (n.lemma || n.text).toLowerCase();
+    for (const c of PREP_COLLOCATIONS) {
+      if (tlem === c.verb && nlem === c.bad) {
+        out.push({level:'error', glossId: c.glossId, msg: c.msg(t.text, n.text, c.good)});
+      }
+    }
+  }
+  return out;
+}
+
 function checkAgreementForVerb(tokens, subjSpan, vidx) {
   if (!subjSpan) return null;
   const finite = tokens[vidx];
@@ -191,10 +212,6 @@ function validate(tokens, structureOrList) {
     }
   }
 
-  /* [W12-B] Pass kedua: finit verb ke-2+ per klausa.
-     [W12-C] Perbaikan:
-     (a) skip finit yang didahului TO/MD/aux.
-     (b) batasi pencarian subjek pada relativizer terakhir. */
   for (const structure of structures) {
     if (!structure) continue;
     const range = structure.range || {start: 0, end: tokens.length - 1};
@@ -208,18 +225,16 @@ function validate(tokens, structureOrList) {
       if (prevNT && (prevNT.tag === 'TO' || prevNT.tag === 'MD' || prevNT.aux)) continue;
       finites.push(i);
     }
-    for (let k = 1; k < finites.length; k++) {
-      const vidx = finites[k];
-      let subjSearchEnd = vidx - 1;
-      for (let j = vidx - 1; j >= range.start; j--) {
-        if (tokens[j].tag === 'WP' || tokens[j].tag === 'WDT') {
-          subjSearchEnd = j - 1;
-          break;
-        }
-      }
+    for (const vidx of finites) {
+      if (structure.vp && vidx >= structure.vp.start && vidx <= structure.vp.end) continue;
       let subjStart = -1, subjEnd = -1;
-      for (let j = subjSearchEnd; j >= range.start; j--) {
+      for (let j = vidx - 1; j >= range.start; j--) {
         const t = tokens[j];
+        if (t.tag === 'WP' || t.tag === 'WDT') break;
+        if (VERB_TAGS.has(t.tag) && !t.aux) break;
+        if (t.tag === 'CC') break;
+        if (t.tag === 'IN' && CLAUSE_SUBORDINATORS.has((t.text||'').toLowerCase())) break;
+        if (t.tag === 'PUNCT' && /[.!?]/.test(t.text)) break;
         if (t.tag === 'PRP' || /^(NN|NNP)$/.test(t.tag)) {
           let s = j;
           while (s > range.start && /^(DT|PRP\$|JJ|JJR|JJS|CD)$/.test(tokens[s-1].tag)) s--;
@@ -286,7 +301,7 @@ function validate(tokens, structureOrList) {
       const prev = i > 0 ? tokens[i-1] : null;
       let fire = false;
       if (!prev) { fire = true; }
-      else if (prev.tag === 'DT' || prev.tag === 'PRP$' || prev.tag === 'CD' || prev.tag === 'IN') { /* skip */ }
+      else if (prev.tag === 'DT' || prev.tag === 'PRP$' || prev.tag === 'CD' || prev.tag === 'IN') { }
       else if (prev.tag === 'JJ' || prev.tag === 'JJR' || prev.tag === 'JJS') {
         const prev2 = i > 1 ? tokens[i-2] : null;
         if (!(prev2 && (prev2.tag === 'DT' || prev2.tag === 'PRP$' || prev2.tag === 'CD'))) fire = true;
@@ -301,6 +316,9 @@ function validate(tokens, structureOrList) {
 
   const transferIssues = detectTransferPatterns(tokens);
   for (const ti of transferIssues) issues.push(ti);
+
+  const prepIssues = detectPrepCollocations(tokens);
+  for (const pi of prepIssues) issues.push(pi);
 
   if (!issues.length) {
     const meaningful = tokens.filter(t => t.tag !== 'PUNCT');
