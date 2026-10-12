@@ -3,9 +3,7 @@
    Original section: 1. LEXICON
    ============================================================ */
 const LEX = {};
-const REG_COUNT = {};
-const reg = (words, def) => (Array.isArray(words) ? words : [words]).forEach(w => { REG_COUNT[w] = (REG_COUNT[w] || 0) + 1; LEX[w] = Object.assign({lemma:w}, def); });
-
+const reg = (words, def) => (Array.isArray(words) ? words : [words]).forEach(w => LEX[w] = Object.assign({lemma:w}, def));
 
 reg(['i','me'], {t:'PRP',person:1,num:'sg'});
 reg('you', {t:'PRP',person:2,num:'sg'});
@@ -39,10 +37,10 @@ for (const f in AUX_HAVE) reg(f, {t:AUX_HAVE[f],lemma:'have',aux:true,form:f==='
 reg(['not','very','always','never','often','sometimes','usually','already','just','too','also','here','there','now','then','soon','quite','rather','really','still','yesterday','today','tomorrow','again','yet','ever','once','twice','only','even','almost','enough','maybe','perhaps','please'], {t:'RB'});
 reg('well', {t:'RB',amb:['JJ']});
 reg('ago', {t:'RB'});
-reg(['go','eat','play','study','read','finish','want','learn','buy','write','move','pass','see','come','take','make','give','get','find','leave','say','tell','think','bring','run','speak','break','begin','like','love','hate','need','help','use','try','start','stop','open','close','put','keep','let','call','ask','watch','listen','walk','talk','live','die','happen','change','carry','hold','turn','show','hear','feel','become','seem','know','mean','understand','remember','forget','wait','meet','pay','send','build','grow','sit','stand','lose','win','fall','rise','sing','swim','teach','catch','drive','fly','draw','wear','drink','sleep','wake','wash','clean','cook','prepare','belong','enjoy','prefer','decide','allow','invite','visit','arrive','return','travel','continue','improve','realize'], {t:'VB',form:'V1'});
+reg(['go','eat','play','study','read','finish','want','learn','buy','write','move','pass','see','come','take','make','give','get','find','leave','say','tell','think','bring','run','speak','break','begin','like','love','hate','need','help','use','try','start','stop','open','close','put','keep','let','call','ask','answer','watch','listen','walk','talk','live','die','happen','change','carry','hold','turn','show','hear','feel','become','seem','know','mean','understand','remember','forget','wait','meet','pay','send','build','grow','sit','stand','lose','win','fall','rise','sing','swim','teach','catch','drive','fly','draw','wear','drink','sleep','wake','wash','clean','cook','prepare','belong','enjoy','prefer','decide','allow','invite','visit','arrive','return','travel','continue','improve','realize','depend'], {t:'VB',form:'V1'});
 reg('work', {t:'NN',amb:['VB']});
 reg('water', {t:'NN',amb:['VB']});
-reg(['book','room','school','market','food','morning','evening','night','day','year','week','month','hour','minute','second','time','friend','family','home','house','city','country','world','life','way','thing','man','woman','child','student','teacher','author','exam','test','homework','breakfast','lunch','dinner','car','tree','dog','cat','table','chair','door','window','hand','head','eye','face','money','job','idea','problem','question','story','word','name','number','part','place','church','office','hospital','football','basketball','sport','game','music','song','movie','language','letter','email','message','phone','computer','internet','island','mountain','river','sea','ocean','sky','sun','moon','star','air','fire','earth','garden','park','street','road','village','town','area','size','type','kind','form','color','shape','sound','taste','smell','dream','plan','reason','result','effect','cause','purpose','goal','future','past','present'], {t:'NN'});
+reg(['book','room','school','market','food','morning','evening','night','day','year','week','month','hour','minute','second','time','friend','family','home','house','city','country','world','life','way','thing','people','man','woman','child','student','teacher','author','exam','test','homework','breakfast','lunch','dinner','car','tree','dog','cat','table','chair','door','window','hand','head','eye','face','money','job','idea','problem','question','answer','story','word','name','number','part','place','church','office','hospital','football','basketball','sport','game','music','song','movie','language','letter','email','message','phone','computer','internet','island','mountain','river','sea','ocean','sky','sun','moon','star','air','fire','earth','garden','park','street','road','village','town','area','size','type','kind','form','color','shape','sound','taste','smell','dream','plan','reason','result','effect','cause','purpose','goal','future','past','present'], {t:'NN'});
 reg(['sister','mother','father','brother','daughter','son','uncle','aunt'], {t:'NN'});
 reg(['engineer','lawyer','nurse','doctor','dentist','scientist'], {t:'NN'});
 reg(['english','indonesia','america','london','paris','jakarta','john','mary','monday','tuesday','wednesday','thursday','friday','saturday','sunday','january','february','march','april','may','june','july','august','september','october','november','december'], {t:'NNP'});
@@ -59,27 +57,53 @@ reg('news', {t:'NN'});
 reg(['mathematics','physics','politics','economics','statistics','linguistics','athletics','gymnastics','measles','mumps','rabies','ethics','diabetes'], {t:'NN'});
 const NUMBER_INVARIANT = new Set(['sheep','fish','deer','moose','aircraft','series','species','offspring','means']);
 
-reg(['friendly','lonely','lovely','silly','holy','likely','unlikely','early','daily','weekly','monthly','yearly'], {t:'JJ'});
+reg(['friendly','lonely','lovely','silly','ugly','holy','likely','unlikely','early','daily','weekly','monthly','yearly'], {t:'JJ'});
 reg(['order','other','paper','matter','member','layer','banner','proper','tender','sober','eager'], {t:'NN'});
-reg(['suggest','request','interest','invest','protest','arrest','harvest','digest','manifest'], {t:'VB',amb:['NN']});
+reg(['suggest','request','interest','invest','protest','arrest','harvest','digest','manifest','forest'], {t:'VB',amb:['NN']});
 reg(['apply','multiply','imply','comply','rely','deny','identify','qualify','modify','specify','verify','justify','satisfy','clarify','classify','occupy'], {t:'VB'});
-reg(['reply','supply','study','answer'], {t:'VB',amb:['NN']});
-reg('forest', {t:'NN'});
+reg(['reply','supply','study'], {t:'VB',amb:['NN']});
 
 reg(['advice','information','furniture','equipment','luggage','baggage','traffic','weather','knowledge','research','progress','permission'], {t:'NN'});
 const UNCOUNTABLE = new Set([
   'advice','homework','information','furniture','equipment','luggage','baggage',
   'traffic','weather','knowledge','rice','sugar','salt','butter','cheese',
   'wool','cotton','wood','iron','steel','research','progress','permission',
-  'money','music','bread','milk','coffee','tea','food','fruit',
-  'news','help','fun','luck','hope','peace','patience'
+  'money','music','bread','water','milk','coffee','tea','food','fruit',
+  'news','work','help','fun','luck','hope','peace','patience'
 ]);
 
 reg('more', {t:'RB', amb:['JJR']});
 reg(['agree','discuss','marry'], {t:'VB', form:'V1'});
 reg('married', {t:'JJ'});
 
+reg(['everyone','someone','anyone','nobody','everybody','somebody','anybody'], {t:'PRP', person:3, num:'sg'});
+reg(['station','airport','bus','train','plane','ticket','passport','tourist','university','college','semester','degree','project','report','essay','poem','novel','magazine','newspaper','review','mail','recipient','sender','meeting','holiday','vacation'], {t:'NN'});
+reg(['collect','deliver','accept','receive','describe','publish','admit','submit','attend','participate','graduate','celebrate'], {t:'VB', form:'V1'});
+reg(['mat','rug','floor','wall','ceiling','shelf','box','bag','cup','glass'], {t:'NN'});
+reg(['many','much','few','several','both','either','neither'], {t:'DT', amb:['JJ']});
+reg('change',    {t:'NN', amb:['VB']});
+reg('increase',  {t:'NN', amb:['VB']});
+reg('decrease',  {t:'NN', amb:['VB']});
+reg('influence', {t:'NN', amb:['VB']});
+reg('result',    {t:'NN', amb:['VB']});
+reg('affect',    {t:'VB', amb:['NN']});
+reg('process',   {t:'NN', amb:['VB']});
+reg('support',   {t:'NN', amb:['VB']});
+reg('design',    {t:'NN', amb:['VB']});
+reg('agriculture', {t:'NN'});
+reg('climate',   {t:'NN'});
+reg('data',      {t:'NNS'});
+reg('participant', {t:'NN'});
+reg('economy',   {t:'NN'});
+reg('aware',     {t:'JJ'});
+
 const DURATION_UNITS = new Set(['minute','second','hour','day','week','month','year','decade','century']);
+const INSTITUTIONAL_NN = new Set([
+  'school','work','home','church','bed','prison','jail','hospital','college','university',
+  'class','office','town','sea','breakfast','lunch','dinner',
+  'mathematics','physics','politics','economics','statistics','linguistics',
+  'athletics','gymnastics','measles','mumps','rabies','ethics','diabetes'
+]);
 const ARTICLE_REQUIRED_NN = new Set([
   'book','table','chair','door','window','car','tree','dog','cat',
   'house','room','letter','phone',
