@@ -5,8 +5,9 @@
    ============================================================ */
 const CLAUSE_SUBORDINATORS = new Set([
   'that','because','if','although','though','while','unless','since',
-  'after','before','until','whenever','whether'
+  'after','before','until','whenever','whether','when','where'
 ]);
+
 function splitClauses(tokens) {
   const clauses = [];
   let start = 0, seenVerb = false;
@@ -20,7 +21,7 @@ function splitClauses(tokens) {
       const after = tokens[i+1];
       if (after && /^(PRP|NN|NNS|NNP)$/.test(after.tag)) split = true;
     }
-    else if (t.tag === 'WRB' && seenVerb && i > start) {
+    else if ((t.tag === 'WRB' || t.tag === 'WDT') && seenVerb && i > start) {
       const after = tokens[i+1];
       if (after && /^(PRP|NN|NNS|NNP)$/.test(after.tag)) split = true;
     }
@@ -42,7 +43,8 @@ function splitClauses(tokens) {
 function analyzeStructure(tokens, spans, rangeStart, rangeEnd) {
   if (rangeStart == null) rangeStart = 0;
   if (rangeEnd == null) rangeEnd = tokens.length - 1;
-  const vpSpans = spans.filter(s => s.type === 'VP' && s.start >= rangeStart && s.end <= rangeEnd);
+  let vpSpans = spans.filter(s => s.type === 'VP' && s.start >= rangeStart && s.end <= rangeEnd);
+  vpSpans = splitFiniteVPs(tokens, vpSpans);
   if (!vpSpans.length) return {vps:[], subject:null, object:null, adverbials:[], range:{start:rangeStart, end:rangeEnd}};
   let vp = vpSpans[0], subject = null;
   let relStart = -1;
@@ -50,6 +52,20 @@ function analyzeStructure(tokens, spans, rangeStart, rangeEnd) {
     if (tokens[j].tag === 'WP' || tokens[j].tag === 'WDT') { relStart = j; break; }
   }
   if (relStart >= 0 && vpSpans.length > 1) vp = vpSpans[1];
+
+  if (relStart < 0 && vpSpans.length > 1) {
+    const firstVP = vpSpans[0];
+    const lastVP = vpSpans[vpSpans.length - 1];
+    let hasInterveningSubj = false;
+    for (let j = firstVP.end + 1; j < lastVP.start; j++) {
+      if (/^(PRP|NN|NNP|NNS)$/.test(tokens[j].tag)) { hasInterveningSubj = true; break; }
+    }
+    if (!hasInterveningSubj) {
+      vp = lastVP;
+      const firstNP = spans.find(s => s.type === 'NP' && s.start >= rangeStart && s.end < vp.start);
+      if (firstNP) subject = {start: firstNP.start, end: firstNP.end};
+    }
+  }
 
   let lead = rangeStart;
   while (lead <= rangeEnd && /^(WRB|WP|WDT|WP\$|CC|UH)$/.test(tokens[lead].tag)) lead++;
