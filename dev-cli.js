@@ -29,7 +29,7 @@ for (const f of files) {
 }
 combined += `
 globalThis.__GI__ = { tokenize, tagAll, chunk, splitClauses, analyzeStructure, detectTense, detectGrammar,
-  detectTransferPatterns, validate, runOneTest, TEST_CORPUS, GRAMMAR_GLOSSARY, REG_COUNT };
+  detectTransferPatterns, detectPrepCollocations, validate, runOneTest, TEST_CORPUS, GRAMMAR_GLOSSARY };
 `;
 try { vm.runInContext(combined, sandbox, { filename: 'bundle.js' }); }
 catch (e) { console.error('LOAD FAIL:', e.message); process.exit(1); }
