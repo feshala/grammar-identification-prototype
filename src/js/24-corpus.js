@@ -263,7 +263,7 @@ const TEST_CORPUS = [
       // penyempurnaan disengaja (entri akhir menambah amb)
       'boring', 'tired', 'study',
       // dinetralkan handler khusus di tagOne (05-tagger.js) sebelum lookup LEX
-      'like', 'early',
+      'like',
       // MASALAH TERBUKA: entri akhir menimpa tag lain; perlu aturan konteks di tagger
       'may', 'clean', 'kind', 'only', 'past', 'second', 'yet'
     ]);
