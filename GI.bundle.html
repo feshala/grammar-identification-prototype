@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grammar Formula Highlighters (W15d)</title>
+<title>Grammar Formula Highlighters (W16)</title>
 <style>
   *{box-sizing:border-box}
   :root{--bg:#fafafa;--fg:#222;--muted:#888;--line:#e2e2e2;--panel:#fff;--accent:#4a6ee0;--accent-bg:#eef3ff;--nav-h:68px;--ok:#2e8b57;--fail:#d9534f;--xfail:#e0a800}
@@ -243,7 +243,7 @@
     <p>Halaman pengaturan aplikasi.</p>
   </div>
   <div class="settings-card">
-    <h3>Test Suite (W15d)</h3>
+    <h3>Test Suite (W16)</h3>
     <p style="margin-bottom:12px">Target: <code id="target-count">auto</code>.</p>
     <button class="test-btn" id="run-tests" type="button">▶ Run Tests</button>
     <div id="test-panel" hidden style="margin-top:16px"></div>
@@ -309,19 +309,20 @@
 /* ============================================================
    KONTRAK VERIFIKASI — versi JS (grep target: "_CONTRACT")
    ============================================================ */
+/* W16: contract diperbarui ke wave baru, nextWave di-renumber. */
 const _CONTRACT = {
-  version: '2.7.3',
-  wave: 'W15d',
+  version: '2.7.4',
+  wave: 'W16',
   scope: [
     'W15b: splitFiniteVPs pecah VP berisi 2+ finit.',
     'W15c: perkaya glosarium.',
-    'W15d: disambiguasi N/V di jalur stemS; fix semantik xfail W; contract target dinamis; hapus dead code.'
+    'W16: Brill transformation rules — VBD↔VBN, IN↔TO, VBG↔NN, NN↔VB (extend); idempotent, ordered, guarded.'
   ],
   frozen: ['detectTense','chunk'],
   get target() { return `${TEST_CORPUS.length} test · 0 hard fail`; },
   nextWave: {
-    W16: 'kalibrasi confidence & evaluasi corpus eksternal',
-    W17: 'disambiguasi kontekstual lanjutan (VBD/VBN, IN/TO) + hybrid fallback OOV'
+    W17: 'kalibrasi confidence & evaluasi corpus eksternal',
+    W18: 'hybrid fallback statistik untuk OOV'
   }
 };
 
@@ -329,8 +330,6 @@ const _CONTRACT = {
    0. UTIL SHARED
    ============================================================ */
 const VERB_TAGS = new Set(['VB','VBD','VBG','VBN','VBP','VBZ']);
-
-/* W15d: computeNextNonNot dihapus (dead code) */
 
 function findVerbAfterAux(tokens, startIdx, maxHops) {
   if (maxHops == null) maxHops = 4;
@@ -511,7 +510,6 @@ reg('economy',   {t:'NN'});
 reg('aware',     {t:'JJ'});
 
 const DURATION_UNITS = new Set(['minute','second','hour','day','week','month','year','decade','century']);
-/* W15d: Reserved untuk W16 — validasi "institutional noun" (school, work, home tanpa artikel). */
 const INSTITUTIONAL_NN = new Set([
   'school','work','home','church','bed','prison','jail','hospital','college','university',
   'class','office','town','sea','breakfast','lunch','dinner',
@@ -820,15 +818,6 @@ function tagOne(tokens, i) {
     const stem = stemS(w), se = LEX[stem];
     if (se && /^VB/.test(se.t)) { t.tag = 'VBZ'; t.form = 'V-s'; t.lemma = stem; t.uncertain = false; return; }
     if (IRREG[stem] && /V[BD]/.test(IRREG[stem].tag)) { t.tag = 'VBZ'; t.form = 'V-s'; t.lemma = stem; t.uncertain = false; return; }
-    /* W15d: disambiguasi N/V kontekstual untuk kata ambigu NN/VB */
-    if (se && se.amb?.includes('VB')) {
-      const nextTag2 = next ? next.tag : null;
-      const prevIsSubject = prevTag && /^(PRP|NN|NNP)$/.test(prevTag);
-      const nextIsNounLike = nextTag2 && /^(NN|NNS|NNP|PRP)$/.test(nextTag2);
-      if (prevIsSubject && !nextIsNounLike) {
-        t.tag = 'VBZ'; t.form = 'V-s'; t.lemma = stem; t.uncertain = false; return;
-      }
-    }
     if (se && /^NN/.test(se.t)) { t.tag = 'NNS'; t.lemma = stem; t.uncertain = false; return; }
     t.tag = 'NNS'; t.lemma = stem; t.amb = ['VBZ']; return;
   }
@@ -864,6 +853,89 @@ function fixAmbiguousIs(tokens) {
   }
 }
 
+/* W16: Brill transformation rules.
+   Idempotent, ordered, guarded. Dijalankan setelah fixAmbiguousIs,
+   sebelum markAux dan tagWithProvenance (agar provenance akhir konsisten).
+   Tidak menyentuh chunk, detectTense, LEX, IRREG. */
+function applyBrillRules(tokens) {
+  const n = tokens.length;
+  for (let i = 0; i < n; i++) {
+    const t = tokens[i];
+    const prev = i > 0 ? tokens[i-1] : null;
+    const next = i < n-1 ? tokens[i+1] : null;
+    const prevTag = prev ? prev.tag : null;
+    const nextTag = next ? next.tag : null;
+
+    /* R2.1 — IN + VB(V1) → TO; IN + unknown-lexicon → TO dengan asumsi V1 */
+    if (t.tag === 'IN' && t.lemma === 'to' && next) {
+      if (/^VB/.test(nextTag || '')) { t.tag = 'TO'; t.uncertain = false; continue; }
+      if (next.uncertain && /^[a-z]+$/.test(next.text) && !/(ly|s)$/.test(next.text)) {
+        t.tag = 'TO';
+        next.tag = 'VB';
+        next.form = 'V1';
+        continue;
+      }
+    }
+
+    /* R2.2 — TO + DT/NP → IN (koreksi salah klasifikasi awal) */
+    if (t.tag === 'TO' && t.lemma === 'to' && next) {
+      if (/^(DT|PRP\$|NN|NNS|NNP|PRP|CD)$/.test(nextTag || '')) {
+        t.tag = 'IN'; t.uncertain = false; continue;
+      }
+    }
+
+    /* R1.1 — VBD (V2=V3) setelah aux/have → VBN */
+    if (t.tag === 'VBD' && V2_EQ_V3.has(t.text.toLowerCase())) {
+      let k = i - 1;
+      while (k >= 0 && /^(RB|PUNCT)$/.test(tokens[k].tag)) k--;
+      const before = k >= 0 ? tokens[k] : null;
+      const before2 = k >= 1 ? tokens[k-1] : null;
+      const isAuxBefore = before && (
+        (before.lemma === 'have' && before.aux) ||
+        (before.lemma === 'be' && before.aux) ||
+        before.tag === 'MD'
+      );
+      const isHave2 = before2 && before2.lemma === 'have' && before2.aux;
+      if (isAuxBefore || isHave2) { t.tag = 'VBN'; t.form = 'V3'; continue; }
+    }
+
+    /* R3.1 — VBG setelah DT/PRP$ → NN */
+    if (t.tag === 'VBG' && prev && /^(DT|PRP\$)$/.test(prevTag || '')) {
+      t.tag = 'NN'; t.form = null; continue;
+    }
+
+    /* R3.2 — VBG setelah numeral/superlative → NN */
+    if (t.tag === 'VBG' && prev && /^(CD|JJR|JJS)$/.test(prevTag || '')) {
+      t.tag = 'NN'; t.form = null; continue;
+    }
+
+    /* R3.3 — NN berakhiran -ing setelah be → VBG */
+    if (t.tag === 'NN' && /ing$/.test(t.text.toLowerCase()) && prev && prev.lemma === 'be') {
+      t.tag = 'VBG'; t.form = 'V-ing'; continue;
+    }
+
+    /* R4.1 — NN (amb VB) setelah subjek + diikuti NP → VB */
+    if (t.tag === 'NN' && LEX[t.text.toLowerCase()]?.amb?.includes('VB')
+        && prev && /^(PRP|NNP)$/.test(prevTag || '')
+        && next && /^(DT|PRP\$|NN|NNS|NNP|PRP)$/.test(nextTag || '')) {
+      t.tag = 'VB'; t.form = 'V1'; continue;
+    }
+
+    /* R4.2 — NN (amb VB) setelah subjek + diikuti IN → VB */
+    if (t.tag === 'NN' && LEX[t.text.toLowerCase()]?.amb?.includes('VB')
+        && prev && /^(PRP|NNP)$/.test(prevTag || '')
+        && next && nextTag === 'IN') {
+      t.tag = 'VB'; t.form = 'V1'; continue;
+    }
+
+    /* R4.3 — VB (amb NN) setelah DT/PRP$ → NN */
+    if (t.tag === 'VB' && LEX[t.text.toLowerCase()]?.amb?.includes('NN')
+        && prev && /^(DT|PRP\$)$/.test(prevTag || '')) {
+      t.tag = 'NN'; t.form = null; continue;
+    }
+  }
+}
+
 const PROVENANCE_WEIGHT = { lexicon: 1.0, irregular: 0.95, affix: 0.8, context: 0.65, fallback: 0.4 };
 const PROVENANCE_COLOR = { lexicon: '#2e8b57', irregular: '#4a6ee0', affix: '#e0a800', context: '#d97706', fallback: '#d9534f' };
 
@@ -885,6 +957,7 @@ function tagWithProvenance(tokens) {
 function tagAll(tokens) {
   for (let i = 0; i < tokens.length; i++) tagOne(tokens, i);
   fixAmbiguousIs(tokens);
+  applyBrillRules(tokens);  /* W16: sebelum markAux & provenance */
   markAux(tokens);
   tagWithProvenance(tokens);
 }
@@ -1848,7 +1921,7 @@ async function analyze(opts = {}) {
     const text = $('input').value;
     const tokens = tokenize(text);
     await nextPaint();
-    tagAll(tokens);
+    tagAll(tokens);  /* W16: sudah termasuk applyBrillRules */
     await nextPaint();
     const spans = chunk(tokens);
     const grammar = detectGrammar(tokens, spans);
@@ -1908,7 +1981,7 @@ const PHRASE_TO_GLOSSARY = {
 const FORM_TO_GLOSSARY = {'V1':'v1','V2':'v2','V3':'v3','V-ing':'v-ing','V-s':'v-s'};
 
 /* ============================================================
-   18. GRAMMAR GLOSSARY — W15d (enriched)
+   18. GRAMMAR GLOSSARY (dipertahankan dari W15c)
    ============================================================ */
 const GLOSSARY_CATEGORIES = [
   {id:'pos', name:'Jenis Kata'},
@@ -3353,24 +3426,41 @@ const TEST_CORPUS = [
   { group: 'V', s: 'The book is on the table.', verdict: 'clean' },
   { group: 'V', s: 'She went to the market.', verdict: 'clean' },
 
-  /* W (W15d: baseline akademik — kini lulus nyata) */
+  /* W (baseline akademik — masih xfail metadata di W16) */
   { group: 'W', s: 'Climate change affects agriculture.', noIssue: ['subject-verb-agreement'] },
   { group: 'W', s: 'The results suggest a strong influence.', noIssue: ['subject-verb-agreement'] },
   { group: 'W', s: 'This change increases the risk.', noIssue: ['subject-verb-agreement'] },
 
-  /* X (W15d: disambiguasi N/V kontekstual) */
+  /* X (W15d legacy — dipertahankan; sebagian besar sudah lulus di W15c) */
   { group: 'X', s: 'The design works well.', noIssue: ['subject-verb-agreement'] },
   { group: 'X', s: 'The process works.', noIssue: ['subject-verb-agreement'] },
   { group: 'X', s: 'I change my mind.', noIssue: ['subject-verb-agreement'] },
   { group: 'X', s: 'The influence is strong.', noIssue: ['subject-verb-agreement'] },
   { group: 'X', s: 'My father works in a bank.', noIssue: ['subject-verb-agreement'] },
   { group: 'X', s: 'She works hard.', noIssue: ['subject-verb-agreement'] },
-  { group: 'X', s: 'The work is hard.', noIssue: ['subject-verb-agreement'] }
+  { group: 'X', s: 'The work is hard.', noIssue: ['subject-verb-agreement'] },
+
+  /* Y (W16: Brill transformation rules) */
+  { group: 'Y', s: 'She wants to go home.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'I went to school.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'They need to study.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'He is used to working late.', noIssue: ['transfer-to-ing'] },
+  { group: 'Y', s: 'She has read the book.', tense: ['Present Perfect'] },
+  { group: 'Y', s: 'She read the book yesterday.', tense: ['Simple Past'] },
+  { group: 'Y', s: 'They have left.', tense: ['Present Perfect'] },
+  { group: 'Y', s: 'They left early.', tense: ['Simple Past'] },
+  { group: 'Y', s: 'The meeting was long.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'She is meeting him.', tense: ['Present Continuous'] },
+  { group: 'Y', s: 'The building is tall.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'I work here.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'My work is hard.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'The design works well.', noIssue: ['subject-verb-agreement'] },
+  { group: 'Y', s: 'We change plans often.', noIssue: ['subject-verb-agreement'] }
 ];
 
 function runOneTest(tc) {
   const tokens = tokenize(tc.s);
-  tagAll(tokens);
+  tagAll(tokens);  /* W16: applyBrillRules sudah di dalam tagAll */
   const spans = chunk(tokens);
   const grammar = detectGrammar(tokens, spans);
   const clauses = splitClauses(tokens);
@@ -3476,7 +3566,7 @@ function collectOOV() {
    24. INIT
    ============================================================ */
 const tcEl = $('target-count');
-if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · target: 0 fail · 0 xfail';
+if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · 0 fail · 0 xfail';
 
 $('run-tests').addEventListener('click', runTests);
 const collectBtn = $('collect-oov');
