@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grammar Formula Highlighters (W15c)</title>
+<title>Grammar Formula Highlighters (W15d)</title>
 <style>
   *{box-sizing:border-box}
   :root{--bg:#fafafa;--fg:#222;--muted:#888;--line:#e2e2e2;--panel:#fff;--accent:#4a6ee0;--accent-bg:#eef3ff;--nav-h:68px;--ok:#2e8b57;--fail:#d9534f;--xfail:#e0a800}
@@ -243,7 +243,7 @@
     <p>Halaman pengaturan aplikasi.</p>
   </div>
   <div class="settings-card">
-    <h3>Test Suite (W15c)</h3>
+    <h3>Test Suite (W15d)</h3>
     <p style="margin-bottom:12px">Target: <code id="target-count">auto</code>.</p>
     <button class="test-btn" id="run-tests" type="button">▶ Run Tests</button>
     <div id="test-panel" hidden style="margin-top:16px"></div>
@@ -310,17 +310,18 @@
    KONTRAK VERIFIKASI — versi JS (grep target: "_CONTRACT")
    ============================================================ */
 const _CONTRACT = {
-  version: '2.7.2',
-  wave: 'W15c',
+  version: '2.7.3',
+  wave: 'W15d',
   scope: [
-    'W15b: splitFiniteVPs pecah VP berisi 2+ finit; restore glosarium; LEX tambah mat + akademik ambigu.',
-    'W15c: perkaya glosarium — contoh ke-3 di ~60 entri inti; perluasan fungsi/identifikasi/perbedaan; target chars ≥ 50.000.'
+    'W15b: splitFiniteVPs pecah VP berisi 2+ finit.',
+    'W15c: perkaya glosarium.',
+    'W15d: disambiguasi N/V di jalur stemS; fix semantik xfail W; contract target dinamis; hapus dead code.'
   ],
   frozen: ['detectTense','chunk'],
-  get target() { return `${TEST_CORPUS.length} pass · 0 fail · 0 xfail`; },
+  get target() { return `${TEST_CORPUS.length} test · 0 hard fail`; },
   nextWave: {
     W16: 'kalibrasi confidence & evaluasi corpus eksternal',
-    W17: 'disambiguasi kontekstual Brill-style (N/V, VBD/VBN, IN/TO) + hybrid fallback statistik hanya untuk OOV'
+    W17: 'disambiguasi kontekstual lanjutan (VBD/VBN, IN/TO) + hybrid fallback OOV'
   }
 };
 
@@ -329,15 +330,7 @@ const _CONTRACT = {
    ============================================================ */
 const VERB_TAGS = new Set(['VB','VBD','VBG','VBN','VBP','VBZ']);
 
-function computeNextNonNot(tokens) {
-  const n = tokens.length;
-  const arr = new Array(n).fill(n);
-  for (let i = n - 2; i >= 0; i--) {
-    const nx = tokens[i+1];
-    arr[i] = (nx && nx.tag === 'RB' && nx.lemma === 'not') ? arr[i+1] : i+1;
-  }
-  return arr;
-}
+/* W15d: computeNextNonNot dihapus (dead code) */
 
 function findVerbAfterAux(tokens, startIdx, maxHops) {
   if (maxHops == null) maxHops = 4;
@@ -518,6 +511,7 @@ reg('economy',   {t:'NN'});
 reg('aware',     {t:'JJ'});
 
 const DURATION_UNITS = new Set(['minute','second','hour','day','week','month','year','decade','century']);
+/* W15d: Reserved untuk W16 — validasi "institutional noun" (school, work, home tanpa artikel). */
 const INSTITUTIONAL_NN = new Set([
   'school','work','home','church','bed','prison','jail','hospital','college','university',
   'class','office','town','sea','breakfast','lunch','dinner',
@@ -826,6 +820,15 @@ function tagOne(tokens, i) {
     const stem = stemS(w), se = LEX[stem];
     if (se && /^VB/.test(se.t)) { t.tag = 'VBZ'; t.form = 'V-s'; t.lemma = stem; t.uncertain = false; return; }
     if (IRREG[stem] && /V[BD]/.test(IRREG[stem].tag)) { t.tag = 'VBZ'; t.form = 'V-s'; t.lemma = stem; t.uncertain = false; return; }
+    /* W15d: disambiguasi N/V kontekstual untuk kata ambigu NN/VB */
+    if (se && se.amb?.includes('VB')) {
+      const nextTag2 = next ? next.tag : null;
+      const prevIsSubject = prevTag && /^(PRP|NN|NNP)$/.test(prevTag);
+      const nextIsNounLike = nextTag2 && /^(NN|NNS|NNP|PRP)$/.test(nextTag2);
+      if (prevIsSubject && !nextIsNounLike) {
+        t.tag = 'VBZ'; t.form = 'V-s'; t.lemma = stem; t.uncertain = false; return;
+      }
+    }
     if (se && /^NN/.test(se.t)) { t.tag = 'NNS'; t.lemma = stem; t.uncertain = false; return; }
     t.tag = 'NNS'; t.lemma = stem; t.amb = ['VBZ']; return;
   }
@@ -958,9 +961,6 @@ function chunk(tokens) {
   return normalizeSpans(spans);
 }
 
-/* ============================================================
-   5b. W15b — split VP berisi 2+ finit
-   ============================================================ */
 function splitFiniteVPs(tokens, vpSpans) {
   const out = [];
   for (const vp of vpSpans) {
@@ -1908,7 +1908,7 @@ const PHRASE_TO_GLOSSARY = {
 const FORM_TO_GLOSSARY = {'V1':'v1','V2':'v2','V3':'v3','V-ing':'v-ing','V-s':'v-s'};
 
 /* ============================================================
-   18. GRAMMAR GLOSSARY — W15c (enriched)
+   18. GRAMMAR GLOSSARY — W15d (enriched)
    ============================================================ */
 const GLOSSARY_CATEGORIES = [
   {id:'pos', name:'Jenis Kata'},
@@ -1923,7 +1923,7 @@ const GRAMMAR_GLOSSARY = {
   'noun': {id:'noun', name:'Noun (Kata Benda)', abbr:'NN / NNS / NNP', category:'pos',
     definition:'Kata yang menyebut orang, tempat, benda, atau hal yang bisa dibicarakan.',
     simple:'Kata benda = nama orang, tempat, atau barang. Contoh: book, Jakarta, teacher.',
-    fungsi:'Jadi kata inti dalam kelompok kata benda. Bisa berperan sebagai pelaku, yang dikenai tindakan, atau pelengkap predikat.',
+    fungsi:'Jadi kata inti dalam kelompok kata benda. Bisa berperan sebagai pelaku, yang dikenai tindakan, atau pelengkap predikat. Kadang juga menjelaskan kata benda lain (noun adjunct) seperti "school bag".',
     identifikasi:'Biasanya bisa didahului "the", "a", atau "an". Bentuk tunggal (NN), jamak (NNS), atau nama diri (NNP). Ciri khas: tidak bisa dijadikan kata kerja tanpa perubahan.',
     rumus:null,
     contoh:[
@@ -1931,32 +1931,32 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'The <u>students</u> are in <u>Jakarta</u>.', catatan:'"students" (NNS) jamak; "Jakarta" (NNP) nama tempat.'},
       {kalimat:'<u>Books</u> are expensive.', catatan:'"Books" (NNS) tanpa determiner karena jamak umum.'}
     ],
-    perbedaan:'NN hanya satu kata. NP (Noun Phrase) adalah kelompok kata yang intinya kata benda. Subject adalah peran NP dalam kalimat. Ketiganya berbeda.',
+    perbedaan:'NN hanya satu kata. NP (Noun Phrase) adalah kelompok kata yang intinya kata benda. Subject adalah peran NP dalam kalimat. Ketiganya berbeda. Benda bisa jadi penjelas kata benda lain (noun adjunct), mis. "school bag" — "school" di sini menjelaskan "bag".',
     related:['noun-phrase','pronoun','determiner','subject','direct-object']},
   'pronoun': {id:'pronoun', name:'Pronoun (Kata Ganti)', abbr:'PRP / PRP$ / WP / WP$ / WDT', category:'pos',
     definition:'Kata pengganti orang atau benda, supaya tidak menyebut nama yang sama berulang-ulang.',
     fungsi:'Menggantikan kata benda yang sudah disebut sebelumnya. "I, you, he, she, it, we, they" menggantikan orang/benda. "my, your, his, her" menunjukkan kepemilikan.',
-    identifikasi:'I, you, he, she, it, we, they, my, your, his, her; juga who, whom, whose, which. Bentuk subjek vs objek berbeda: I → me, he → him.',
+    identifikasi:'I, you, he, she, it, we, they, my, your, his, her; juga who, whom, whose, which. Bentuk subjek vs objek berbeda: I → me, he → him, we → us, they → them.',
     rumus:null,
     contoh:[
       {kalimat:'<u>She</u> loves <u>her</u> book.', catatan:'"She" (PRP). "her" (PRP$).'},
       {kalimat:'<u>Who</u> wrote this?', catatan:'"Who" kata tanya pengganti orang (WP).'},
       {kalimat:'<u>They</u> are playing.', catatan:'"They" menggantikan sekelompok orang.'}
     ],
-    perbedaan:'Kata ganti orang menggantikan kata benda. Kata ganti kepemilikan menunjukkan milik siapa. Berbeda dari determiner yang mendahului kata benda.',
+    perbedaan:'Kata ganti orang menggantikan kata benda. Kata ganti kepemilikan menunjukkan milik siapa. Berbeda dari determiner yang mendahului kata benda. Kata ganti refleksif (myself, yourself) merujuk kembali ke subjek.',
     related:['noun','determiner','subject']},
   'verb': {id:'verb', name:'Verb (Kata Kerja)', abbr:'VB / VBD / VBG / VBN / VBP / VBZ', category:'pos',
     definition:'Kata yang menyatakan tindakan, kejadian, atau keadaan.',
     simple:'Kata kerja = kata tindakan atau keadaan. Contoh: go, eat, is.',
-    fungsi:'Jadi inti dari kelompok kata kerja. Bersama kata bantu membentuk predikat kalimat. Bentuk berubah sesuai subjek dan waktu.',
-    identifikasi:'VB (dasar); VBD (lampau); VBG (-ing); VBN (V3); VBP (I/you/we/they); VBZ (he/she/it). Ciri khas: bisa diikuti objek langsung.',
+    fungsi:'Jadi inti dari kelompok kata kerja. Bersama kata bantu membentuk predikat kalimat. Bentuk berubah sesuai subjek dan waktu. Ada kata kerja transitif (butuh objek) dan intransitif (tidak butuh objek).',
+    identifikasi:'VB (dasar); VBD (lampau); VBG (-ing); VBN (V3); VBP (I/you/we/they); VBZ (he/she/it). Ciri khas: bisa diikuti objek langsung atau membentuk satu predikat.',
     rumus:'Subjek + kata kerja (+ objek/pelengkap)',
     contoh:[
       {kalimat:'She <u>went</u> to school.', catatan:'"went" bentuk lampau (V2).'},
       {kalimat:'They <u>are</u> <u>reading</u>.', catatan:'"are" kata bantu; "reading" VBG.'},
       {kalimat:'He <u>runs</u> fast.', catatan:'"runs" adalah V-s untuk pelaku he.'}
     ],
-    perbedaan:'Verb adalah satu kata. Verb Phrase adalah kelompok kata dengan kata kerja sebagai intinya. Predikat adalah peran VP dalam kalimat.',
+    perbedaan:'Verb adalah satu kata. Verb Phrase adalah kelompok kata dengan kata kerja sebagai intinya. Predikat adalah peran VP dalam kalimat. Bedakan dari kata benda yang kebetulan mirip seperti "work" (kerja) vs "to work" (bekerja).',
     related:['verb-phrase','main-verb','auxiliary-verb','v1','v2','v3','v-ing','v-s','irregular-verb','regular-verb']},
   'auxiliary-verb': {id:'auxiliary-verb', name:'Auxiliary Verb (Kata Bantu)', abbr:'Aux', category:'pos',
     definition:'Kata bantu yang mendampingi kata kerja utama untuk membentuk waktu, bentuk sedang berlangsung, kalimat pasif, atau kalimat negatif/tanya.',
@@ -1968,7 +1968,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'They <u>are</u> playing.', catatan:'"are" kata bantu untuk Present Continuous.'},
       {kalimat:'He <u>does</u> not know.', catatan:'"does" kata bantu untuk negatif Simple Present.'}
     ],
-    perbedaan:'Kata bantu tidak punya arti tindakan sendiri. Kata kerja utama membawa makna. Be bisa juga jadi kata kerja utama (copula).',
+    perbedaan:'Kata bantu tidak punya arti tindakan sendiri. Kata kerja utama membawa makna. Be bisa juga jadi kata kerja utama (copula) — mis. "She is happy". Konteks yang menentukan.',
     related:['verb','modal-verb','main-verb','auxiliary']},
   'modal-verb': {id:'modal-verb', name:'Modal Verb (Kata Bantu Modal)', abbr:'MD', category:'pos',
     definition:'Kata bantu yang mengungkapkan kemampuan, izin, kewajiban, kemungkinan, atau rencana di masa depan.',
@@ -1980,11 +1980,11 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'You <u>must</u> not smoke.', catatan:'"must" + not + V1.'},
       {kalimat:'They <u>will</u> come.', catatan:'"will" + V1 "come".'}
     ],
-    perbedaan:'Modal tidak berubah bentuk dan selalu diikuti kata kerja dasar. Kata bantu biasa (be/do/have) bisa berubah bentuk dan butuh infleksi.',
+    perbedaan:'Modal tidak berubah bentuk dan selalu diikuti kata kerja dasar. Kata bantu biasa (be/do/have) bisa berubah bentuk dan butuh infleksi. Bedakan "should" (modal) dari "should to" (salah).',
     related:['auxiliary-verb','verb','modal-construction','negation']},
   'adjective': {id:'adjective', name:'Adjective (Kata Sifat)', abbr:'JJ / JJR / JJS', category:'pos',
     definition:'Kata yang menerangkan sifat atau keadaan kata benda.',
-    fungsi:'Menambah keterangan pada kata benda di dalam kelompok kata benda. Bisa juga jadi pelengkap setelah "be", "seem", "become".',
+    fungsi:'Menambah keterangan pada kata benda di dalam kelompok kata benda. Bisa juga jadi pelengkap setelah "be", "seem", "become". Bisa berperan sebagai modifier sebelum kata benda.',
     identifikasi:'JJ (dasar); JJR (perbandingan -er); JJS (superlatif -est). Kata sifat panjang pakai more/most, bukan -er/-est.',
     rumus:null,
     contoh:[
@@ -1992,7 +1992,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'This is <u>better</u> than that.', catatan:'"better" (JJR).'},
       {kalimat:'She is the <u>tallest</u>.', catatan:'"tallest" (JJS).'}
     ],
-    perbedaan:'Kata sifat menerangkan kata benda. Kata keterangan menerangkan kata kerja, kata sifat, atau kata keterangan lain. Jangan tertukar: "quick" (JJ) vs "quickly" (RB).',
+    perbedaan:'Kata sifat menerangkan kata benda. Kata keterangan menerangkan kata kerja, kata sifat, atau kata keterangan lain. Jangan tertukar: "quick" (JJ) vs "quickly" (RB). Hati-hati: "interested" (JJ) vs "interesting" (JJ dengan makna berbeda).',
     related:['adjective-phrase','adverb','noun','subject-complement']},
   'adverb': {id:'adverb', name:'Adverb (Kata Keterangan)', abbr:'RB / WRB', category:'pos',
     definition:'Kata yang menerangkan kata kerja, kata sifat, kata keterangan lain, atau seluruh kalimat.',
@@ -2004,7 +2004,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'<u>When</u> did you arrive?', catatan:'"When" (WRB).'},
       {kalimat:'He is <u>very</u> tall.', catatan:'"very" (RB) menerangkan kata sifat "tall".'}
     ],
-    perbedaan:'Kata keterangan menerangkan kata kerja/sifat/keterangan. Kata sifat menerangkan kata benda. "Very" (RB) tidak bisa menerangkan kata benda.',
+    perbedaan:'Kata keterangan menerangkan kata kerja/sifat/keterangan. Kata sifat menerangkan kata benda. "Very" (RB) tidak bisa menerangkan kata benda. Beberapa kata keterangan tidak berakhiran -ly (fast, hard, well).',
     related:['adverb-phrase','adjective','adverbial']},
   'determiner': {id:'determiner', name:'Determiner (Kata Penunjuk)', abbr:'DT', category:'pos',
     definition:'Kata yang membatasi atau menentukan kata benda mana yang dimaksud.',
@@ -2016,7 +2016,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'<u>An</u> apple.', catatan:'"An" sebelum bunyi vokal.'},
       {kalimat:'<u>Some</u> books are here.', catatan:'"Some" jumlah tidak spesifik.'}
     ],
-    perbedaan:'Determiner bukan kata sifat. Fungsinya membatasi kata benda mana, bukan menerangkan sifatnya. Bahasa Indonesia tidak punya determiner, jadi pelajar sering lupa.',
+    perbedaan:'Determiner bukan kata sifat. Fungsinya membatasi kata benda mana, bukan menerangkan sifatnya. Bahasa Indonesia tidak punya determiner, jadi pelajar sering lupa. Determiner bisa juga berupa kata ganti kepemilikan (my, your).',
     related:['noun','noun-phrase','pronoun']},
   'preposition': {id:'preposition', name:'Preposition (Kata Depan)', abbr:'IN', category:'pos',
     definition:'Kata yang menghubungkan kata benda atau kata ganti dengan bagian lain kalimat, biasanya menunjukkan tempat, waktu, atau cara.',
@@ -2028,7 +2028,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'The book <u>on</u> the table.', catatan:'"on" menunjukkan posisi.'},
       {kalimat:'He is <u>from</u> Indonesia.', catatan:'"from" menunjukkan asal.'}
     ],
-    perbedaan:'Kata depan diikuti kata benda. "to" sebagai penanda kata kerja dasar diikuti kata kerja. "to the market" (IN + NP) berbeda dari "to learn" (TO + V1).',
+    perbedaan:'Kata depan diikuti kata benda. "to" sebagai penanda kata kerja dasar diikuti kata kerja. "to the market" (IN + NP) berbeda dari "to learn" (TO + V1). Pasangan kata kerja + preposisi tidak selalu sama dengan bahasa Indonesia.',
     related:['prepositional-phrase','noun-phrase']},
   'conjunction': {id:'conjunction', name:'Conjunction (Kata Sambung)', abbr:'CC', category:'pos',
     definition:'Kata yang menghubungkan dua bagian kalimat yang setara, seperti kata, kelompok kata, atau klausa.',
@@ -2040,7 +2040,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She is tired <u>but</u> happy.', catatan:'"but" menghubungkan dua kata sifat.'},
       {kalimat:'He is small <u>yet</u> strong.', catatan:'"yet" menyatakan kontras.'}
     ],
-    perbedaan:'CC menghubungkan dua hal yang setara. Subordinator (because, when, if) menghubungkan klausa utama dengan klausa bawahan. CC selalu di tengah, subordinator bisa di awal.',
+    perbedaan:'CC menghubungkan dua hal yang setara. Subordinator (because, when, if) menghubungkan klausa utama dengan klausa bawahan. CC selalu di tengah, subordinator bisa di awal. Jangan campur: "because" bukan CC.',
     related:['subordinate-clause','main-clause']},
   'infinitive-marker': {id:'infinitive-marker', name:'Infinitive Marker (Penanda "to")', abbr:'TO', category:'pos',
     definition:'Kata "to" yang muncul sebelum kata kerja bentuk dasar.',
@@ -2050,9 +2050,9 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She wants <u>to</u> learn.', catatan:'"to learn" = to + V1.'},
       {kalimat:'I went <u>to</u> the shop.', catatan:'Di sini "to" kata depan, diikuti NP.'},
-      {kalimat:'He needs <u>to</u> sleep.', catatan:'"to sleep" infinitive phrase.'}
+      {kalimat:'They decided <u>to</u> leave early.', catatan:'"to leave" = to + V1 sebagai objek.'}
     ],
-    perbedaan:'"to" penanda selalu + V1. "to" kata depan selalu + NP. Untuk pelajar A2/B1, aturan aman: "to + V1".',
+    perbedaan:'"to" penanda selalu + V1. "to" kata depan selalu + NP. Untuk pelajar A2/B1, aturan aman: "to + V1". Setelah kata kerja tertentu (enjoy, avoid, finish) lebih lazim diikuti gerund, bukan "to + V1".',
     related:['infinitive','infinitive-phrase','gerund']},
   'numeral': {id:'numeral', name:'Numeral (Kata Bilangan)', abbr:'CD', category:'pos',
     definition:'Kata yang menyatakan jumlah atau urutan.',
@@ -2061,9 +2061,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:null,
     contoh:[
       {kalimat:'<u>Three</u> books are on the table.', catatan:'"Three" (CD) menjelaskan jumlah.'},
-      {kalimat:'The <u>second</u> winner is here.', catatan:'"second" (CD) menjelaskan urutan.'}
+      {kalimat:'The <u>second</u> winner is here.', catatan:'"second" (CD) menjelaskan urutan.'},
+      {kalimat:'I have <u>two</u> sisters.', catatan:'"two" (CD) sebagai penentu jumlah.'}
     ],
-    perbedaan:'Kata bilangan jumlah menjawab "berapa?". Kata bilangan urutan menjawab "ke berapa?". Ordinal sering didahului "the".',
+    perbedaan:'Kata bilangan jumlah menjawab "berapa?". Kata bilangan urutan menjawab "ke berapa?". Ordinal sering didahului "the". Baik cardinal maupun ordinal bisa jadi determiner.',
     related:['noun','noun-phrase','determiner']},
   'interjection': {id:'interjection', name:'Interjection (Kata Seru)', abbr:'UH', category:'pos',
     definition:'Kata yang mengungkapkan perasaan atau reaksi spontan.',
@@ -2072,9 +2073,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:null,
     contoh:[
       {kalimat:'<u>Wow</u>, that\'s amazing!', catatan:'"Wow" diikuti koma.'},
-      {kalimat:'<u>Oh</u>, I forgot!', catatan:'"Oh" menunjukkan keterkejutan.'}
+      {kalimat:'<u>Oh</u>, I forgot!', catatan:'"Oh" menunjukkan keterkejutan.'},
+      {kalimat:'<u>Hi</u>, how are you?', catatan:'"Hi" sapaan, diikuti koma.'}
     ],
-    perbedaan:'Kata seru bukan pelaku atau objek. Berbeda dari kata keterangan yang menerangkan kata lain. Fungsinya murni ekspresif.',
+    perbedaan:'Kata seru bukan pelaku atau objek. Berbeda dari kata keterangan yang menerangkan kata lain. Fungsinya murni ekspresif. Bisa muncul di awal, tengah, atau akhir kalimat.',
     related:[]},
   'punctuation': {id:'punctuation', name:'Punctuation (Tanda Baca)', abbr:'PUNCT', category:'pos',
     definition:'Tanda yang memisahkan, menutup, atau menandai struktur kalimat.',
@@ -2083,9 +2085,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:null,
     contoh:[
       {kalimat:'She came, saw, and conquered.', catatan:'Koma memisahkan tiga aksi sejajar.'},
-      {kalimat:'Where are you?', catatan:'Tanda tanya mengakhiri pertanyaan.'}
+      {kalimat:'Where are you?', catatan:'Tanda tanya mengakhiri pertanyaan.'},
+      {kalimat:'I like tea; she likes coffee.', catatan:'Titik koma menghubungkan dua klausa erat.'}
     ],
-    perbedaan:'Koma memisahkan bagian dalam satu kalimat. Titik mengakhiri kalimat. Tanda tanya dan tanda seru menunjukkan jenis kalimat.',
+    perbedaan:'Koma memisahkan bagian dalam satu kalimat. Titik mengakhiri kalimat. Tanda tanya dan tanda seru menunjukkan jenis kalimat. Titik koma menggabungkan dua klausa mandiri yang berhubungan erat tanpa CC.',
     related:[]},
   'noun-phrase': {id:'noun-phrase', name:'Noun Phrase (Kelompok Kata Benda)', abbr:'NP', category:'phrase',
     definition:'Kelompok kata yang intinya kata benda atau kata ganti.',
@@ -2096,7 +2099,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'<u>The intelligent student</u> reads <u>a book</u>.', catatan:'NP pertama pelaku. NP kedua objek.'},
       {kalimat:'<u>The book on the table</u> is mine.', catatan:'NP panjang dengan preposisi.'}
     ],
-    perbedaan:'NP adalah kelompok kata. NN hanya satu kata. Subject adalah peran NP dalam kalimat. NP bisa jadi objek juga.',
+    perbedaan:'NP adalah kelompok kata. NN hanya satu kata. Subject adalah peran NP dalam kalimat. NP bisa jadi objek juga. NP dapat diperluas dengan preposisi, adjective clause, atau partisip.',
     related:['noun','determiner','adjective','subject','direct-object']},
   'verb-phrase': {id:'verb-phrase', name:'Verb Phrase (Kelompok Kata Kerja)', abbr:'VP', category:'phrase',
     definition:'Kelompok kata yang intinya kata kerja, bisa memuat kata bantu.',
@@ -2107,7 +2110,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>has been reading</u> a book.', catatan:'VP dengan dua kata bantu dan satu kata kerja inti.'},
       {kalimat:'They <u>will come</u>.', catatan:'VP dengan modal + V1.'}
     ],
-    perbedaan:'VP adalah kelompok kata. Verb adalah satu kata. Predicate adalah peran VP dalam kalimat. VP bisa jadi inti predikat.',
+    perbedaan:'VP adalah kelompok kata. Verb adalah satu kata. Predicate adalah peran VP dalam kalimat. VP bisa jadi inti predikat. Bisa juga melibatkan adverbial, tapi VP biasanya dianggap inti kata kerja saja.',
     related:['verb','auxiliary-verb','main-verb','predicate','modal-verb']},
   'prepositional-phrase': {id:'prepositional-phrase', name:'Prepositional Phrase (Kelompok Kata Depan)', abbr:'PP', category:'phrase',
     definition:'Kelompok kata yang dimulai dengan kata depan, diikuti kata benda.',
@@ -2119,7 +2122,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'The book <u>on the table</u> is mine.', catatan:'PP menerangkan "the book".'},
       {kalimat:'I sleep <u>in the morning</u>.', catatan:'PP menjelaskan waktu.'}
     ],
-    perbedaan:'Inti PP adalah kata depan, bukan kata benda. Bisa berpindah posisi dalam kalimat. Berbeda dari InfP yang dimulai "to" + kata kerja.',
+    perbedaan:'Inti PP adalah kata depan, bukan kata benda. Bisa berpindah posisi dalam kalimat. Berbeda dari InfP yang dimulai "to" + kata kerja. PP sebagai adverbial waktu/tempat/cara.',
     related:['preposition','noun-phrase','adverbial']},
   'adjective-phrase': {id:'adjective-phrase', name:'Adjective Phrase (Kelompok Kata Sifat)', abbr:'AdjP', category:'phrase',
     definition:'Kelompok kata yang intinya kata sifat.',
@@ -2128,9 +2131,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'(kata keterangan) + kata sifat',
     contoh:[
       {kalimat:'A <u>very tall</u> building.', catatan:'"very tall" menerangkan "building".'},
-      {kalimat:'She is <u>extremely happy</u>.', catatan:'"extremely happy" melengkapi subjek.'}
+      {kalimat:'She is <u>extremely happy</u>.', catatan:'"extremely happy" melengkapi subjek.'},
+      {kalimat:'It was <u>quite expensive</u>.', catatan:'"quite expensive" melengkapi subjek.'}
     ],
-    perbedaan:'Inti AdjP adalah kata sifat. NP intinya kata benda. AdvP intinya kata keterangan. Hati-hati: "happy" (JJ) vs "happily" (RB).',
+    perbedaan:'Inti AdjP adalah kata sifat. NP intinya kata benda. AdvP intinya kata keterangan. Hati-hati: "happy" (JJ) vs "happily" (RB). Setelah "be" atau kata kerja penghubung, kata sifat jadi pelengkap.',
     related:['adjective','adverb','noun-phrase','subject-complement']},
   'adverb-phrase': {id:'adverb-phrase', name:'Adverb Phrase (Kelompok Kata Keterangan)', abbr:'AdvP', category:'phrase',
     definition:'Kelompok kata yang intinya kata keterangan.',
@@ -2139,9 +2143,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'(kata keterangan) + kata keterangan',
     contoh:[
       {kalimat:'She speaks <u>very clearly</u>.', catatan:'"very clearly" menerangkan cara.'},
-      {kalimat:'He runs <u>quite fast</u>.', catatan:'"quite fast" menerangkan cara.'}
+      {kalimat:'He runs <u>quite fast</u>.', catatan:'"quite fast" menerangkan cara.'},
+      {kalimat:'She arrived <u>very late</u>.', catatan:'"very late" menerangkan waktu.'}
     ],
-    perbedaan:'AdvP intinya kata keterangan. AdjP intinya kata sifat. AdvP sering diakhiri -ly, tapi ada juga kata keterangan tanpa -ly (fast, hard, well).',
+    perbedaan:'AdvP intinya kata keterangan. AdjP intinya kata sifat. AdvP sering diakhiri -ly, tapi ada juga kata keterangan tanpa -ly (fast, hard, well). AdvP bisa menerangkan keseluruhan kalimat, tidak hanya kata kerja.',
     related:['adverb','adverbial','adjective-phrase']},
   'infinitive-phrase': {id:'infinitive-phrase', name:'Infinitive Phrase (Kelompok "to" + Kata Kerja)', abbr:'InfP', category:'phrase',
     definition:'Kelompok kata yang dimulai dengan "to" dan diikuti kata kerja dasar.',
@@ -2150,9 +2155,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'to + V1 (+ objek/pelengkap)',
     contoh:[
       {kalimat:'She wants <u>to study English</u>.', catatan:'Objek dari "wants".'},
-      {kalimat:'I came <u>to see you</u>.', catatan:'Menjelaskan tujuan.'}
+      {kalimat:'I came <u>to see you</u>.', catatan:'Menjelaskan tujuan.'},
+      {kalimat:'He agreed <u>to help us</u>.', catatan:'"to help us" objek dari "agreed".'}
     ],
-    perbedaan:'InfP dimulai "to" + kata kerja. PP dimulai kata depan + kata benda. GerP dimulai V-ing dan berfungsi sebagai kata benda.',
+    perbedaan:'InfP dimulai "to" + kata kerja. PP dimulai kata depan + kata benda. GerP dimulai V-ing dan berfungsi sebagai kata benda. InfP bisa berperan sebagai adverbial tujuan.',
     related:['infinitive','infinitive-marker','gerund-phrase','gerund']},
   'gerund-phrase': {id:'gerund-phrase', name:'Gerund Phrase (Kelompok Kata Kerja -ing)', abbr:'GerP', category:'phrase',
     definition:'Kelompok kata yang dimulai kata kerja -ing dan berfungsi sebagai kata benda.',
@@ -2161,9 +2167,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'V-ing (+ objek/pelengkap)',
     contoh:[
       {kalimat:'<u>Reading books</u> is fun.', catatan:'GerP sebagai pelaku.'},
-      {kalimat:'I enjoy <u>playing football</u>.', catatan:'GerP sebagai objek.'}
+      {kalimat:'I enjoy <u>playing football</u>.', catatan:'GerP sebagai objek.'},
+      {kalimat:'<u>Watching movies</u> is relaxing.', catatan:'GerP sebagai subjek.'}
     ],
-    perbedaan:'GerP berfungsi sebagai kata benda. Participial Phrase (V-ing/V3) berfungsi sebagai penjelas kata benda. V-ing dalam Present Continuous adalah bagian VP, bukan GerP.',
+    perbedaan:'GerP berfungsi sebagai kata benda. Participial Phrase (V-ing/V3) berfungsi sebagai penjelas kata benda. V-ing dalam Present Continuous adalah bagian VP, bukan GerP. Setelah enjoy/avoid/finish, gunakan gerund, bukan infinitive.',
     related:['gerund','v-ing','infinitive-phrase','noun-phrase']},
   'participial-phrase': {id:'participial-phrase', name:'Participial Phrase (Kelompok V-ing/V3 sebagai penjelas)', abbr:'PartP', category:'phrase',
     definition:'Kelompok kata dengan kata kerja -ing atau V3 sebagai intinya, dipakai untuk menjelaskan kata benda.',
@@ -2174,7 +2181,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'The man <u>wearing a hat</u> is my uncle.', catatan:'"wearing a hat" menjelaskan "the man".'},
       {kalimat:'The book <u>written by Mary</u> is famous.', catatan:'"written by Mary" menjelaskan "the book".'}
     ],
-    perbedaan:'PartP berfungsi sebagai penjelas kata benda. GerP berfungsi sebagai kata benda. PartP tidak bisa diganti "it".',
+    perbedaan:'PartP berfungsi sebagai penjelas kata benda. GerP berfungsi sebagai kata benda. PartP tidak bisa diganti "it". PartP sering menggantikan relative clause — "the man who is wearing a hat" menjadi "the man wearing a hat".',
     related:['v-ing','v3','gerund-phrase','adjective']},
   'subject': {id:'subject', name:'Subject (Pelaku)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang menjadi topik dan menentukan bentuk kata kerja.',
@@ -2186,7 +2193,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'<u>The students</u> read books.', catatan:'Pelaku jamak → "read" tanpa -s.'},
       {kalimat:'<u>Reading</u> is fun.', catatan:'"Reading" (gerund) berperan sebagai pelaku.'}
     ],
-    perbedaan:'Pelaku adalah peran dalam kalimat. Kata benda adalah jenis kata. Bisa ada kata benda yang bukan pelaku (mis. objek). Bisa ada pelaku yang bukan kata benda (mis. gerund).',
+    perbedaan:'Pelaku adalah peran dalam kalimat. Kata benda adalah jenis kata. Bisa ada kata benda yang bukan pelaku (mis. objek). Bisa ada pelaku yang bukan kata benda (mis. gerund). Pelaku sering muncul paling awal kecuali kalimat tanya atau inversi.',
     related:['noun-phrase','predicate','subject-verb-agreement','direct-object']},
   'predicate': {id:'predicate', name:'Predicate (Predikat)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang menyatakan apa yang dilakukan atau dikatakan tentang pelaku.',
@@ -2197,7 +2204,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>reads a book every night</u>.', catatan:'Predikat = V + objek + keterangan.'},
       {kalimat:'They <u>are playing football</u>.', catatan:'Predikat = kata bantu + V + objek.'}
     ],
-    perbedaan:'Predicate adalah peran dalam kalimat. Verb Phrase adalah salah satu wujud predikat. Predikat selalu ada dalam kalimat lengkap.',
+    perbedaan:'Predicate adalah peran dalam kalimat. Verb Phrase adalah salah satu wujud predikat. Predikat selalu ada dalam kalimat lengkap. Predikat mencakup semua yang menyatakan tentang subjek, bukan hanya kata kerja.',
     related:['verb-phrase','subject','main-verb']},
   'main-verb': {id:'main-verb', name:'Main Verb (Kata Kerja Inti)', abbr:null, category:'sentence',
     definition:'Kata kerja utama dalam predikat yang membawa arti sebenarnya.',
@@ -2206,9 +2213,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'(kata bantu/modal) + kata kerja inti',
     contoh:[
       {kalimat:'She has <u>finished</u>.', catatan:'"finished" kata kerja inti.'},
-      {kalimat:'They will <u>come</u>.', catatan:'"come" kata kerja inti.'}
+      {kalimat:'They will <u>come</u>.', catatan:'"come" kata kerja inti.'},
+      {kalimat:'She can <u>swim</u>.', catatan:'"swim" kata kerja inti.'}
     ],
-    perbedaan:'Kata kerja inti membawa arti. Kata bantu hanya menandai waktu/bentuk. Kata kerja inti bisa berupa V1/V2/V3/V-ing tergantung konteks.',
+    perbedaan:'Kata kerja inti membawa arti. Kata bantu hanya menandai waktu/bentuk. Kata kerja inti bisa berupa V1/V2/V3/V-ing tergantung konteks. Contoh: "has gone" — "gone" kata kerja inti (V3).',
     related:['verb','auxiliary-verb','verb-phrase']},
   'direct-object': {id:'direct-object', name:'Direct Object (Objek Langsung)', abbr:null, category:'sentence',
     definition:'Kata benda yang langsung dikenai tindakan dari kata kerja.',
@@ -2217,9 +2225,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'Pelaku + kata kerja + objek',
     contoh:[
       {kalimat:'She reads <u>a book</u>.', catatan:'"a book" objek langsung.'},
-      {kalimat:'He bought <u>a car</u>.', catatan:'"a car" objek langsung.'}
+      {kalimat:'He bought <u>a car</u>.', catatan:'"a car" objek langsung.'},
+      {kalimat:'They watched <u>a movie</u>.', catatan:'"a movie" objek.'}
     ],
-    perbedaan:'Objek langsung dikenai tindakan. Objek tidak langsung menerima manfaatnya. Bisa keduanya muncul: "She gave me a book".',
+    perbedaan:'Objek langsung dikenai tindakan. Objek tidak langsung menerima manfaatnya. Bisa keduanya muncul: "She gave me a book". Objek langsung juga bisa jadi subjek kalimat pasif.',
     related:['indirect-object','noun-phrase','verb','subject-complement']},
   'indirect-object': {id:'indirect-object', name:'Indirect Object (Objek Tidak Langsung)', abbr:null, category:'sentence',
     definition:'Kata benda yang menyatakan penerima atau penerima manfaat dari tindakan.',
@@ -2228,9 +2237,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'Pelaku + kata kerja + penerima + objek / Pelaku + kata kerja + objek + to/for + penerima',
     contoh:[
       {kalimat:'She gave <u>me</u> a book.', catatan:'"me" penerima.'},
-      {kalimat:'She gave a book <u>to me</u>.', catatan:'Bentuk dengan "to".'}
+      {kalimat:'She gave a book <u>to me</u>.', catatan:'Bentuk dengan "to".'},
+      {kalimat:'He told <u>us</u> the news.', catatan:'"us" penerima.'}
     ],
-    perbedaan:'Objek tidak langsung menerima manfaat. Objek langsung adalah yang diberikan/dikirim. Bisa diubah jadi frasa "to/for".',
+    perbedaan:'Objek tidak langsung menerima manfaat. Objek langsung adalah yang diberikan/dikirim. Bisa diubah jadi frasa "to/for". Kata kerja seperti give, tell, send, show biasanya diikuti objek tidak langsung.',
     related:['direct-object','prepositional-phrase']},
   'subject-complement': {id:'subject-complement', name:'Subject Complement (Pelengkap Subjek)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang menjelaskan pelaku setelah kata kerja seperti be, seem, become.',
@@ -2240,9 +2250,9 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She is <u>a doctor</u>.', catatan:'"a doctor" menjelaskan "She".'},
       {kalimat:'The soup tastes <u>delicious</u>.', catatan:'"delicious" menjelaskan supnya.'},
-      {kalimat:'He became <u>a teacher</u>.', catatan:'"a teacher" menjelaskan "He".'}
+      {kalimat:'She felt <u>happy</u>.', catatan:'"happy" melengkapi subjek.'}
     ],
-    perbedaan:'Subject complement menjelaskan pelaku. Object complement menjelaskan objek. Setelah copula, tidak ada objek langsung.',
+    perbedaan:'Subject complement menjelaskan pelaku. Object complement menjelaskan objek. Setelah copula, tidak ada objek langsung. Bedakan "She is a doctor" (SC) dari "She reads a book" (objek).',
     related:['copular-verb','adjective-phrase','noun-phrase']},
   'object-complement': {id:'object-complement', name:'Object Complement (Pelengkap Objek)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang menjelaskan objek dengan menyatakan sifat atau identitas baru.',
@@ -2251,9 +2261,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'Pelaku + kata kerja + objek + pelengkap',
     contoh:[
       {kalimat:'They elected her <u>president</u>.', catatan:'"president" menjelaskan "her".'},
-      {kalimat:'They painted the wall <u>blue</u>.', catatan:'"blue" menjelaskan "the wall".'}
+      {kalimat:'They painted the wall <u>blue</u>.', catatan:'"blue" menjelaskan "the wall".'},
+      {kalimat:'They named him <u>captain</u>.', catatan:'"captain" menjelaskan objek.'}
     ],
-    perbedaan:'Object complement menjelaskan objek. Subject complement menjelaskan pelaku. Keduanya muncul setelah kata kerja tertentu.',
+    perbedaan:'Object complement menjelaskan objek. Subject complement menjelaskan pelaku. Keduanya muncul setelah kata kerja tertentu. Bisa berupa kata benda atau kata sifat.',
     related:['subject-complement','direct-object']},
   'adverbial': {id:'adverbial', name:'Adverbial (Keterangan)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang menerangkan kata kerja atau seluruh kalimat: kapan, di mana, bagaimana, mengapa.',
@@ -2263,9 +2274,9 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She sings <u>beautifully</u>.', catatan:'"beautifully" cara bernyanyi.'},
       {kalimat:'<u>Yesterday</u> we met.', catatan:'"Yesterday" kapan.'},
-      {kalimat:'He went <u>to the market</u>.', catatan:'"to the market" tempat.'}
+      {kalimat:'We met <u>at noon</u>.', catatan:'PP sebagai adverbial waktu.'}
     ],
-    perbedaan:'Adverbial adalah peran dalam kalimat. Kata keterangan (adverb) adalah jenis kata yang bisa mengisinya. PP juga bisa jadi adverbial.',
+    perbedaan:'Adverbial adalah peran dalam kalimat. Kata keterangan (adverb) adalah jenis kata yang bisa mengisinya. PP juga bisa jadi adverbial. Tidak semua adverb berfungsi sebagai adverbial (kadang sebagai modifier).',
     related:['adverb','adverb-phrase','prepositional-phrase']},
   'main-clause': {id:'main-clause', name:'Main Clause (Klausa Utama)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang bisa berdiri sendiri sebagai kalimat lengkap.',
@@ -2274,9 +2285,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:null,
     contoh:[
       {kalimat:'<u>She reads a book</u> because she loves stories.', catatan:'"She reads a book" bisa berdiri sendiri.'},
-      {kalimat:'<u>I went home</u> when it rained.', catatan:'"I went home" klausa utama.'}
+      {kalimat:'<u>I went home</u> when it rained.', catatan:'"I went home" klausa utama.'},
+      {kalimat:'<u>He called me</u> before he left.', catatan:'Klausa utama bisa berdiri sendiri.'}
     ],
-    perbedaan:'Klausa utama bisa berdiri sendiri. Klausa bawahan tidak. Kalimat kompleks = 1+ klausa utama + 1+ klausa bawahan.',
+    perbedaan:'Klausa utama bisa berdiri sendiri. Klausa bawahan tidak. Kalimat kompleks = 1+ klausa utama + 1+ klausa bawahan. Klausa utama bisa berdiri sendiri maupun berkoordinasi dengan klausa utama lain.',
     related:['subordinate-clause','subject','predicate']},
   'subordinate-clause': {id:'subordinate-clause', name:'Subordinate Clause (Klausa Bawahan)', abbr:null, category:'sentence',
     definition:'Bagian kalimat yang tidak bisa berdiri sendiri dan bergantung pada klausa utama.',
@@ -2285,9 +2297,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'kata hubung + pelaku + kata kerja',
     contoh:[
       {kalimat:'She reads a book <u>because she loves stories</u>.', catatan:'"because..." menjelaskan alasan.'},
-      {kalimat:'I will call you <u>when I arrive</u>.', catatan:'"when..." menjelaskan waktu.'}
+      {kalimat:'I will call you <u>when I arrive</u>.', catatan:'"when..." menjelaskan waktu.'},
+      {kalimat:'I stayed <u>because it was raining</u>.', catatan:'Klausa bawahan alasan.'}
     ],
-    perbedaan:'Klausa bawahan tidak bisa berdiri sendiri. Klausa utama bisa. Klausa bawahan sering didahului subordinator.',
+    perbedaan:'Klausa bawahan tidak bisa berdiri sendiri. Klausa utama bisa. Klausa bawahan sering didahului subordinator. Bedakan "because" (subordinator) dari "and" (CC).',
     related:['main-clause','conjunction']},
   'simple-present': {id:'simple-present', name:'Simple Present (Waktu Sekarang Sederhana)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk menyatakan kebiasaan, fakta umum, atau keadaan saat ini.',
@@ -2300,7 +2313,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'They <u>play</u> football.', catatan:'"they" → bentuk dasar "play".'},
       {kalimat:'The sun <u>rises</u> in the east.', catatan:'Fakta umum, subjek 3sg.'}
     ],
-    perbedaan:'Simple Present untuk kebiasaan/fakta. Present Continuous untuk aksi yang sedang berlangsung. "I eat" vs "I am eating".',
+    perbedaan:'Simple Present untuk kebiasaan/fakta. Present Continuous untuk aksi yang sedang berlangsung. "I eat" vs "I am eating". Simple Present juga dipakai untuk jadwal tetap (mis. "The train leaves at 8") dan instruksi (mis. "You mix the flour first").',
     related:['v1','v-s','subject-verb-agreement','present-continuous']},
   'simple-past': {id:'simple-past', name:'Simple Past (Waktu Lampau Sederhana)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk menyatakan aksi atau keadaan yang sudah selesai di masa lampau.',
@@ -2313,7 +2326,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'They <u>watched</u> a movie.', catatan:'Beraturan: +-ed → "watched".'},
       {kalimat:'I <u>ate</u> rice yesterday.', catatan:'"ate" V2 dari "eat".'}
     ],
-    perbedaan:'Simple Past untuk aksi lampau tuntas. Present Perfect untuk aksi lampau yang masih relevan dengan sekarang. "I ate" vs "I have eaten".',
+    perbedaan:'Simple Past untuk aksi lampau tuntas. Present Perfect untuk aksi lampau yang masih relevan dengan sekarang. "I ate" (waktu spesifik) vs "I have eaten" (pengalaman/hasil). Jangan campur dengan keterangan waktu lampau spesifik pada Present Perfect.',
     related:['v2','irregular-verb','regular-verb','past-continuous','past-perfect']},
   'simple-future': {id:'simple-future', name:'Simple Future (Waktu Akan Datang Sederhana)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk menyatakan aksi atau keadaan yang akan terjadi.',
@@ -2325,7 +2338,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>will call</u> you tomorrow.', catatan:'"will call" aksi yang akan terjadi.'},
       {kalimat:'I <u>will help</u> you.', catatan:'"will help" janji.'}
     ],
-    perbedaan:'"will" untuk prediksi/keputusan spontan. "be going to" untuk rencana yang sudah ada. Keduanya tidak bisa digabung.',
+    perbedaan:'"will" untuk prediksi/keputusan spontan. "be going to" untuk rencana yang sudah ada. Keduanya tidak bisa digabung. Shall lebih formal dan jarang dipakai dalam bahasa sehari-hari Amerika.',
     related:['modal-verb','v1','future-continuous','future-perfect']},
   'present-continuous': {id:'present-continuous', name:'Present Continuous (Sedang Berlangsung Sekarang)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk menyatakan aksi yang sedang berlangsung saat ini.',
@@ -2337,7 +2350,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>is reading</u> a book.', catatan:'"is reading" sedang berlangsung.'},
       {kalimat:'They <u>are playing</u> football.', catatan:'"are playing" sedang berlangsung.'}
     ],
-    perbedaan:'Present Continuous untuk aksi sedang berlangsung. Simple Present untuk kebiasaan/fakta. "I am reading" (sekarang) vs "I read" (biasanya).',
+    perbedaan:'Present Continuous untuk aksi sedang berlangsung. Simple Present untuk kebiasaan/fakta. "I am reading" (sekarang) vs "I read" (biasanya). Kata kerja statif (know, like, want) tidak dipakai dalam bentuk continuous.',
     related:['v-ing','auxiliary-verb','simple-present']},
   'past-continuous': {id:'past-continuous', name:'Past Continuous (Sedang Berlangsung di Lampau)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk menyatakan aksi yang sedang berlangsung di masa lampau.',
@@ -2348,7 +2361,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>was reading</u> when I called.', catatan:'Sedang berlangsung di lampau.'},
       {kalimat:'They <u>were playing</u> football.', catatan:'"were playing" pelaku jamak.'}
     ],
-    perbedaan:'Past Continuous untuk aksi berlangsung di lampau. Simple Past untuk aksi tuntas. "I was reading when he came" (dua aksi, satu terganggu).',
+    perbedaan:'Past Continuous untuk aksi berlangsung di lampau. Simple Past untuk aksi tuntas. "I was reading when he came" (dua aksi, satu terganggu). Sering dipakai bersama Simple Past untuk latar dan kejadian.',
     related:['v-ing','auxiliary-verb','simple-past']},
   'future-continuous': {id:'future-continuous', name:'Future Continuous (Akan Sedang Berlangsung)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk menyatakan aksi yang akan sedang berlangsung di waktu tertentu di masa depan.',
@@ -2359,7 +2372,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'At 8 pm, I <u>will be studying</u>.', catatan:'Pada jam 8 nanti, sedang belajar.'},
       {kalimat:'They <u>will be traveling</u> tomorrow.', catatan:'Aksi berlangsung di masa depan.'}
     ],
-    perbedaan:'Future Continuous menekankan proses. Future Perfect menekankan penyelesaian. "will be studying" vs "will have studied".',
+    perbedaan:'Future Continuous menekankan proses. Future Perfect menekankan penyelesaian. "will be studying" vs "will have studied". Sering dipakai dengan waktu spesifik di masa depan.',
     related:['simple-future','future-perfect','v-ing']},
   'present-perfect': {id:'present-perfect', name:'Present Perfect (Selesai tapi Masih Berhubungan)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk aksi yang terjadi di masa lampau namun masih berhubungan dengan sekarang.',
@@ -2372,7 +2385,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'I <u>have visited</u> Bali twice.', catatan:'Pengalaman hidup.'},
       {kalimat:'They <u>have arrived</u>.', catatan:'Hasil baru saja terjadi.'}
     ],
-    perbedaan:'Present Perfect masih berhubungan dengan sekarang. Simple Past tuntas dan terikat waktu lampau. "I have visited Bali" (pengalaman) vs "I visited Bali in 2020" (waktu spesifik).',
+    perbedaan:'Present Perfect masih berhubungan dengan sekarang. Simple Past tuntas dan terikat waktu lampau. "I have visited Bali" (pengalaman) vs "I visited Bali in 2020" (waktu spesifik). Tidak pakai "yesterday" dengan Present Perfect.',
     related:['v3','auxiliary-verb','simple-past']},
   'past-perfect': {id:'past-perfect', name:'Past Perfect (Selesai Sebelum Aksi Lampau Lain)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk aksi yang selesai sebelum aksi lain di masa lampau.',
@@ -2383,7 +2396,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>had left</u> before I arrived.', catatan:'"had left" lebih dulu daripada "arrived".'},
       {kalimat:'They <u>had finished</u> when we came.', catatan:'"had finished" lebih dulu.'}
     ],
-    perbedaan:'Past Perfect untuk aksi yang lebih dulu di lampau. Simple Past untuk aksi lampau tunggal. Past Perfect sering bersama Simple Past untuk urutan.',
+    perbedaan:'Past Perfect untuk aksi yang lebih dulu di lampau. Simple Past untuk aksi lampau tunggal. Past Perfect sering bersama Simple Past untuk urutan. "When I arrived, she had left" — dua aksi, satu lebih dulu.',
     related:['v3','simple-past','past-perfect-continuous']},
   'future-perfect': {id:'future-perfect', name:'Future Perfect (Akan Selesai Sebelum Waktu Tertentu)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk aksi yang akan selesai sebelum waktu tertentu di masa depan.',
@@ -2394,7 +2407,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'By 2030, she <u>will have graduated</u>.', catatan:'Pada 2030 sudah lulus.'},
       {kalimat:'By next month, I <u>will have finished</u>.', catatan:'Akan sudah selesai.'}
     ],
-    perbedaan:'Future Perfect menekankan selesainya. Future Continuous menekankan keberlangsungannya. "will have finished" vs "will be finishing".',
+    perbedaan:'Future Perfect menekankan selesainya. Future Continuous menekankan keberlangsungannya. "will have finished" vs "will be finishing". Selalu merujuk ke titik waktu tertentu di masa depan.',
     related:['v3','simple-future','future-continuous']},
   'present-perfect-continuous': {id:'present-perfect-continuous', name:'Present Perfect Continuous (Berlangsung Sejak Dulu)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk aksi yang dimulai di masa lampau dan masih berlanjut sampai sekarang.',
@@ -2405,7 +2418,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>has been studying</u> for two hours.', catatan:'Mulai 2 jam lalu, masih belajar.'},
       {kalimat:'They <u>have been waiting</u> since morning.', catatan:'Menunggu sejak pagi, masih menunggu.'}
     ],
-    perbedaan:'Bentuk ini menekankan lama berlangsungnya. Present Perfect menekankan hasilnya. "I have been reading" (masih) vs "I have read" (selesai).',
+    perbedaan:'Bentuk ini menekankan lama berlangsungnya. Present Perfect menekankan hasilnya. "I have been reading" (masih) vs "I have read" (selesai). Sering dipakai dengan for/since.',
     related:['v-ing','present-perfect','auxiliary-verb']},
   'past-perfect-continuous': {id:'past-perfect-continuous', name:'Past Perfect Continuous (Telah Berlangsung Sebelum Aksi Lampau)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk aksi yang sudah berlangsung selama beberapa waktu sebelum titik di masa lampau.',
@@ -2416,7 +2429,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'She <u>had been waiting</u> for an hour when the bus came.', catatan:'Sudah menunggu 1 jam sebelum bus datang.'},
       {kalimat:'They <u>had been playing</u> before it rained.', catatan:'Sudah bermain sebelum hujan.'}
     ],
-    perbedaan:'Bentuk ini menekankan lama. Past Perfect menekankan selesainya. "I had been reading" (lama) vs "I had read" (selesai).',
+    perbedaan:'Bentuk ini menekankan lama. Past Perfect menekankan selesainya. "I had been reading" (lama) vs "I had read" (selesai). Sering dipakai dengan "when" atau "for".',
     related:['v-ing','past-perfect']},
   'future-perfect-continuous': {id:'future-perfect-continuous', name:'Future Perfect Continuous (Akan Telah Berlangsung)', abbr:null, category:'tense',
     definition:'Bentuk waktu untuk aksi yang akan sudah berlangsung selama beberapa waktu pada titik tertentu di masa depan.',
@@ -2427,7 +2440,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'By next year, she <u>will have been working</u> here for a decade.', catatan:'Tahun depan, sudah bekerja 10 tahun.'},
       {kalimat:'By 8 pm, I <u>will have been studying</u> for 3 hours.', catatan:'Akan sudah belajar 3 jam pada jam 8 nanti.'}
     ],
-    perbedaan:'Menekankan lama aksi sampai titik masa depan. Future Perfect menekankan selesainya. Ini bentuk paling jarang dipakai.',
+    perbedaan:'Menekankan lama aksi sampai titik masa depan. Future Perfect menekankan selesainya. Ini bentuk paling jarang dipakai. Hampir selalu dengan "by + waktu" atau "for + durasi".',
     related:['v-ing','future-perfect']},
   'passive-voice': {id:'passive-voice', name:'Passive Voice (Kalimat Pasif)', abbr:null, category:'tense',
     definition:'Bentuk kalimat di mana pelakunya menerima tindakan, bukan melakukan tindakan.',
@@ -2437,9 +2450,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'The book <u>was written</u> by Mary.', catatan:'Buku ditulis (oleh Mary).'},
       {kalimat:'The window <u>is cleaned</u> every day.', catatan:'Jendela dibersihkan setiap hari.'},
-      {kalimat:'The letter <u>has been sent</u>.', catatan:'Passive perfect.'}
+      {kalimat:'The letter <u>has been sent</u>.', catatan:'Passive perfect.'},
+      {kalimat:'The song <u>was sung</u> by her.', catatan:'Passive dengan V3 "sung".'}
     ],
-    perbedaan:'Kalimat aktif menekankan pelaku. Kalimat pasif menekankan yang dikenai tindakan. "Mary wrote the book" vs "The book was written by Mary".',
+    perbedaan:'Kalimat aktif menekankan pelaku. Kalimat pasif menekankan yang dikenai tindakan. "Mary wrote the book" vs "The book was written by Mary". Pelaku sebenarnya opsional. Kalau pelaku tidak ingin disebut, boleh dihilangkan.',
     related:['v3','auxiliary-verb','simple-past']},
   'modal-construction': {id:'modal-construction', name:'Modal Construction (Kalimat dengan Kata Bantu Modal)', abbr:null, category:'tense',
     definition:'Konstruksi dengan kata bantu modal untuk menyatakan kemampuan, izin, kewajiban, kemungkinan, atau rencana.',
@@ -2449,9 +2463,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She <u>can swim</u>.', catatan:'"can" + V1 "swim".'},
       {kalimat:'You <u>must not smoke</u>.', catatan:'"must" + not + V1.'},
-      {kalimat:'They <u>will come</u>.', catatan:'"will" + V1 "come".'}
+      {kalimat:'They <u>will come</u>.', catatan:'"will" + V1 "come".'},
+      {kalimat:'You <u>should rest</u>.', catatan:'"should" + V1.'}
     ],
-    perbedaan:'Modal tidak berubah bentuk dan selalu diikuti V1. Kata bantu biasa (be/do/have) bisa berubah bentuk dan diikuti berbagai bentuk kata kerja.',
+    perbedaan:'Modal tidak berubah bentuk dan selalu diikuti V1. Kata bantu biasa (be/do/have) bisa berubah bentuk dan diikuti berbagai bentuk kata kerja. Jangan tambahkan "to" setelah modal — "must to go" salah.',
     related:['modal-verb','v1']},
   'negation': {id:'negation', name:'Negation (Kalimat Negatif)', abbr:null, category:'tense',
     definition:'Bentuk kalimat untuk menyangkal atau menolak.',
@@ -2461,9 +2476,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She <u>does not like</u> coffee.', catatan:'"does" + not + V1.'},
       {kalimat:'They <u>aren\'t</u> coming.', catatan:'"are" + not = "aren\'t".'},
-      {kalimat:'I <u>cannot</u> swim.', catatan:'"cannot" negatif dari "can".'}
+      {kalimat:'I <u>cannot</u> swim.', catatan:'"cannot" negatif dari "can".'},
+      {kalimat:'She <u>did not come</u>.', catatan:'"did" + "not" + V1.'}
     ],
-    perbedaan:'Kalau ada kata bantu, cukup tambah "not". Kalau tidak ada, pakai do/does/did. Modal negatif tanpa "do".',
+    perbedaan:'Kalau ada kata bantu, cukup tambah "not". Kalau tidak ada, pakai do/does/did. Modal negatif tanpa "do". Bandingkan "I do not know" (Simple Present) vs "I am not knowing" (salah) — kata kerja statif tidak dipakai dalam bentuk continuous.',
     related:['auxiliary-verb','modal-verb','interrogative']},
   'interrogative': {id:'interrogative', name:'Interrogative Sentences (Kalimat Tanya)', abbr:null, category:'tense',
     definition:'Kalimat tanya, biasanya dibentuk dengan menukar posisi kata bantu dan pelaku.',
@@ -2473,9 +2489,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'<u>Do</u> you like tea?', catatan:'Pertanyaan ya/tidak.'},
       {kalimat:'<u>Where</u> does she live?', catatan:'Pertanyaan dengan kata tanya.'},
-      {kalimat:'<u>Can</u> she swim?', catatan:'Pertanyaan dengan modal.'}
+      {kalimat:'<u>Can</u> she swim?', catatan:'Pertanyaan dengan modal.'},
+      {kalimat:'<u>Is</u> she ready?', catatan:'Yes/no question dengan "be".'}
     ],
-    perbedaan:'Pertanyaan ya/tidak dijawab yes/no. Pertanyaan kata tanya menanyakan informasi. Kata bantu selalu di depan pelaku.',
+    perbedaan:'Pertanyaan ya/tidak dijawab yes/no. Pertanyaan kata tanya menanyakan informasi. Kata bantu selalu di depan pelaku. Kalau tidak ada kata bantu, gunakan do/does/did.',
     related:['auxiliary-verb','negation']},
   'subject-verb-agreement': {id:'subject-verb-agreement', name:'Subject-Verb Agreement (Kesesuaian Pelaku dan Kata Kerja)', abbr:null, category:'tense',
     definition:'Aturan yang mengharuskan bentuk kata kerja cocok dengan pelakunya.',
@@ -2485,9 +2502,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She <u>reads</u>.', catatan:'"she" → V-s.'},
       {kalimat:'They <u>read</u>.', catatan:'"they" → V1.'},
-      {kalimat:'The students <u>read</u>.', catatan:'Pelaku jamak → V1.'}
+      {kalimat:'The students <u>read</u>.', catatan:'Pelaku jamak → V1.'},
+      {kalimat:'The cat <u>sleeps</u>.', catatan:'Subjek 3sg → V-s.'}
     ],
-    perbedaan:'Aturan ini hanya berlaku untuk Simple Present. Kalau ada kata bantu atau modal, kata kerja inti tetap V1.',
+    perbedaan:'Aturan ini hanya berlaku untuk Simple Present. Kalau ada kata bantu atau modal, kata kerja inti tetap V1. Subjek jamak dengan -s tetap V1. Frasa "the number of" selalu dianggap tunggal.',
     related:['subject','v1','v-s','simple-present']},
   'v1': {id:'v1', name:'V1 — Bentuk Dasar', abbr:'V1 / VB', category:'verbform',
     definition:'Bentuk kata kerja paling dasar, seperti yang ada di kamus.',
@@ -2498,9 +2516,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'I <u>go</u> to school.', catatan:'V1 untuk pelaku I.'},
       {kalimat:'She can <u>go</u>.', catatan:'Setelah modal, V1.'},
-      {kalimat:'They <u>play</u> football.', catatan:'V1 untuk pelaku they.'}
+      {kalimat:'They <u>play</u> football.', catatan:'V1 untuk pelaku they.'},
+      {kalimat:'We <u>eat</u> together.', catatan:'V1 untuk pelaku "we".'}
     ],
-    perbedaan:'V1 bentuk dasar. V-s hanya he/she/it. V2 lampau. V3 untuk perfect/pasif. V-ing untuk continuous/gerund.',
+    perbedaan:'V1 bentuk dasar. V-s hanya he/she/it. V2 lampau. V3 untuk perfect/pasif. V-ing untuk continuous/gerund. Jangan tertukar V1 dengan V-s: "go" (V1) vs "goes" (V-s).',
     related:['verb','v2','v3','v-ing','v-s','modal-verb']},
   'v2': {id:'v2', name:'V2 — Bentuk Lampau', abbr:'V2 / VBD', category:'verbform',
     definition:'Bentuk kata kerja untuk menyatakan lampau (Simple Past).',
@@ -2510,9 +2529,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:null,
     contoh:[
       {kalimat:'She <u>went</u> to market.', catatan:'V2 dari "go".'},
-      {kalimat:'They <u>watched</u> a movie.', catatan:'V2 dari "watch" (beraturan).'}
+      {kalimat:'They <u>watched</u> a movie.', catatan:'V2 dari "watch" (beraturan).'},
+      {kalimat:'I <u>saw</u> him.', catatan:'V2 tidak beraturan.'}
     ],
-    perbedaan:'V2 hanya untuk Simple Past. V3 untuk perfect/pasif (setelah have/be). V2 tidak pernah setelah kata bantu.',
+    perbedaan:'V2 hanya untuk Simple Past. V3 untuk perfect/pasif (setelah have/be). V2 tidak pernah setelah kata bantu. "She went" (Simple Past) vs "She has gone" (Present Perfect).',
     related:['v1','v3','simple-past','irregular-verb','regular-verb']},
   'v3': {id:'v3', name:'V3 — Bentuk Ketiga (Past Participle)', abbr:'V3 / VBN', category:'verbform',
     definition:'Bentuk kata kerja yang dipakai di perfect tense dan kalimat pasif.',
@@ -2523,9 +2543,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She has <u>eaten</u>.', catatan:'V3 setelah "has".'},
       {kalimat:'The book was <u>written</u> by Mary.', catatan:'V3 dalam kalimat pasif.'},
-      {kalimat:'They have <u>arrived</u>.', catatan:'V3 setelah "have".'}
+      {kalimat:'They have <u>arrived</u>.', catatan:'V3 setelah "have".'},
+      {kalimat:'They have <u>gone</u>.', catatan:'V3 setelah "have".'}
     ],
-    perbedaan:'V3 tidak pernah berdiri sendiri, harus ada have/be di depannya. V2 justru berdiri sendiri di Simple Past. Kesalahan umum: "I have went" (salah), seharusnya "I have gone".',
+    perbedaan:'V3 tidak pernah berdiri sendiri, harus ada have/be di depannya. V2 justru berdiri sendiri di Simple Past. Kesalahan umum: "I have went" (salah), seharusnya "I have gone". Bentuk V2 dan V3 sama untuk kata kerja beraturan (-ed).',
     related:['v1','v2','present-perfect','past-perfect','passive-voice','irregular-verb']},
   'v-ing': {id:'v-ing', name:'V-ing — Bentuk -ing', abbr:'V-ing / VBG', category:'verbform',
     definition:'Bentuk kata kerja dengan akhiran -ing.',
@@ -2535,9 +2556,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She is <u>reading</u>.', catatan:'V-ing untuk aksi sedang berlangsung.'},
       {kalimat:'<u>Reading</u> is fun.', catatan:'V-ing sebagai kata benda (gerund).'},
-      {kalimat:'I enjoy <u>swimming</u>.', catatan:'V-ing sebagai objek (gerund).'}
+      {kalimat:'I enjoy <u>swimming</u>.', catatan:'V-ing sebagai objek (gerund).'},
+      {kalimat:'They are <u>running</u>.', catatan:'V-ing ganda konsonan.'}
     ],
-    perbedaan:'V-ing sebagai bagian kata kerja berbeda dari V-ing sebagai kata benda. Lihat konteks: setelah "be" → continuous; sebagai subjek/objek → gerund.',
+    perbedaan:'V-ing sebagai bagian kata kerja berbeda dari V-ing sebagai kata benda. Lihat konteks: setelah "be" → continuous; sebagai subjek/objek → gerund. Ejaan: jika satu vokal + satu konsonan, konsonan digandakan (run → running).',
     related:['verb','present-continuous','gerund','gerund-phrase']},
   'v-s': {id:'v-s', name:'V-s — Bentuk untuk He/She/It', abbr:'V-s / VBZ', category:'verbform',
     definition:'Bentuk kata kerja dengan akhiran -s/-es yang dipakai untuk pelaku he, she, it di Simple Present.',
@@ -2546,9 +2568,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'Pelaku he/she/it + V-s',
     contoh:[
       {kalimat:'She <u>goes</u> to school.', catatan:'V-s untuk pelaku "she".'},
-      {kalimat:'He <u>watches</u> TV.', catatan:'V-s untuk pelaku "he".'}
+      {kalimat:'He <u>watches</u> TV.', catatan:'V-s untuk pelaku "he".'},
+      {kalimat:'He <u>watches</u> TV.', catatan:'V-s dengan -es.'}
     ],
-    perbedaan:'V-s hanya untuk he/she/it di Simple Present. Pelaku I/you/we/they pakai V1. Kesalahan umum: "She go" (salah), seharusnya "She goes".',
+    perbedaan:'V-s hanya untuk he/she/it di Simple Present. Pelaku I/you/we/they pakai V1. Kesalahan umum: "She go" (salah), seharusnya "She goes". Kata kerja berakhiran -o juga dapat -es (go → goes).',
     related:['v1','simple-present','subject-verb-agreement']},
   'infinitive': {id:'infinitive', name:'Infinitive (Bentuk "to" + Kata Kerja)', abbr:'to + V1', category:'verbform',
     definition:'Bentuk kata kerja yang didahului "to", atau bentuk dasar tanpa "to" (setelah modal).',
@@ -2558,9 +2581,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She wants <u>to learn</u>.', catatan:'Infinitive dengan "to".'},
       {kalimat:'She can <u>swim</u>.', catatan:'Bentuk dasar tanpa "to" setelah modal.'},
-      {kalimat:'I came <u>to see</u> you.', catatan:'Infinitive sebagai keterangan tujuan.'}
+      {kalimat:'I came <u>to see</u> you.', catatan:'Infinitive sebagai keterangan tujuan.'},
+      {kalimat:'He wants <u>to go</u>.', catatan:'to + V1 sebagai objek.'}
     ],
-    perbedaan:'Infinitive memakai kata kerja dasar. Gerund memakai kata kerja -ing sebagai kata benda. "to read" vs "reading".',
+    perbedaan:'Infinitive memakai kata kerja dasar. Gerund memakai kata kerja -ing sebagai kata benda. "to read" vs "reading". Setelah kata kerja tertentu (want, decide, hope) pakai infinitive; setelah kata kerja lain (enjoy, avoid, finish) pakai gerund.',
     related:['infinitive-marker','infinitive-phrase','gerund','v1']},
   'gerund': {id:'gerund', name:'Gerund (Kata Kerja -ing sebagai Kata Benda)', abbr:'V-ing (kata benda)', category:'verbform',
     definition:'Bentuk kata kerja -ing yang berfungsi sebagai kata benda.',
@@ -2570,9 +2594,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'<u>Swimming</u> is healthy.', catatan:'Gerund sebagai pelaku.'},
       {kalimat:'I enjoy <u>reading</u>.', catatan:'Gerund sebagai objek.'},
-      {kalimat:'Her hobby is <u>painting</u>.', catatan:'Gerund sebagai pelengkap.'}
+      {kalimat:'Her hobby is <u>painting</u>.', catatan:'Gerund sebagai pelengkap.'},
+      {kalimat:'<u>Cooking</u> is fun.', catatan:'Gerund sebagai subjek.'}
     ],
-    perbedaan:'Gerund = kata benda. V-ing setelah "be" = kata kerja continuous. Setelah enjoy/avoid/finish pakai gerund, bukan infinitive.',
+    perbedaan:'Gerund = kata benda. V-ing setelah "be" = kata kerja continuous. Setelah enjoy/avoid/finish pakai gerund, bukan infinitive. Bedakan "I like swimming" (gerund) dari "I am swimming" (continuous).',
     related:['v-ing','gerund-phrase','infinitive']},
   'irregular-verb': {id:'irregular-verb', name:'Irregular Verb (Kata Kerja Tidak Beraturan)', abbr:null, category:'verbform',
     definition:'Kata kerja yang bentuk lampau dan bentuk ketiganya tidak mengikuti pola -ed.',
@@ -2581,9 +2606,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:null,
     contoh:[
       {kalimat:'She <u>went</u> and has <u>gone</u>.', catatan:'"went" (V2), "gone" (V3) dari "go".'},
-      {kalimat:'I <u>ate</u> and have <u>eaten</u>.', catatan:'"ate" (V2), "eaten" (V3) dari "eat".'}
+      {kalimat:'I <u>ate</u> and have <u>eaten</u>.', catatan:'"ate" (V2), "eaten" (V3) dari "eat".'},
+      {kalimat:'He <u>wrote</u> a letter.', catatan:'V2 tidak beraturan dari "write".'}
     ],
-    perbedaan:'Kata kerja beraturan: V2/V3 dibentuk dengan -ed. Kata kerja tidak beraturan: bentuknya khusus dan harus dihafal. Ada ~200 irregular verb umum.',
+    perbedaan:'Kata kerja beraturan: V2/V3 dibentuk dengan -ed. Kata kerja tidak beraturan: bentuknya khusus dan harus dihafal. Ada ~200 irregular verb umum. Contoh: "go-went-gone", bukan "go-goed-goed".',
     related:['v2','v3','regular-verb','simple-past','present-perfect']},
   'regular-verb': {id:'regular-verb', name:'Regular Verb (Kata Kerja Beraturan)', abbr:null, category:'verbform',
     definition:'Kata kerja yang membentuk V2 dan V3 dengan menambahkan -ed.',
@@ -2592,9 +2618,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'V1 + -ed',
     contoh:[
       {kalimat:'They <u>watched</u> a movie.', catatan:'"watched" V2 dari "watch".'},
-      {kalimat:'She has <u>played</u> tennis.', catatan:'"played" V3 dari "play".'}
+      {kalimat:'She has <u>played</u> tennis.', catatan:'"played" V3 dari "play".'},
+      {kalimat:'She <u>walked</u> home.', catatan:'V2 beraturan dengan -ed.'}
     ],
-    perbedaan:'Kata kerja beraturan ikut pola -ed. Kata kerja tidak beraturan punya bentuk khusus. Sekitar 90% kata kerja Inggris beraturan.',
+    perbedaan:'Kata kerja beraturan ikut pola -ed. Kata kerja tidak beraturan punya bentuk khusus. Sekitar 90% kata kerja Inggris beraturan. Aturan ejaan: konsonan + y → ied (study → studied).',
     related:['v2','v3','irregular-verb']},
   'auxiliary': {id:'auxiliary', name:'Auxiliary (Kata Bantu)', abbr:'Aux', category:'verbform',
     definition:'Kata bantu (be, do, have) yang mendampingi kata kerja utama.',
@@ -2603,9 +2630,10 @@ const GRAMMAR_GLOSSARY = {
     rumus:'Kata bantu + kata kerja',
     contoh:[
       {kalimat:'She <u>is</u> reading.', catatan:'"is" kata bantu.'},
-      {kalimat:'They <u>have</u> arrived.', catatan:'"have" kata bantu untuk perfect.'}
+      {kalimat:'They <u>have</u> arrived.', catatan:'"have" kata bantu untuk perfect.'},
+      {kalimat:'They <u>are</u> coming.', catatan:'"are" kata bantu continuous.'}
     ],
-    perbedaan:'Kata bantu juga bisa jadi kata kerja utama. "She is happy" — "is" artinya "adalah" (copula). "She is reading" — "is" kata bantu.',
+    perbedaan:'Kata bantu juga bisa jadi kata kerja utama. "She is happy" — "is" artinya "adalah" (copula). "She is reading" — "is" kata bantu. Konteks yang menentukan. Kata bantu tidak menerima -s di Simple Present kalau bukan he/she/it.',
     related:['auxiliary-verb','main-verb','modal-verb']},
   'copular-verb': {id:'copular-verb', name:'Copular Verb (Kata Kerja Penghubung)', abbr:null, category:'verbform',
     definition:'Kata kerja yang menghubungkan pelaku dengan keterangan tentang pelaku tersebut, bukan menyatakan tindakan.',
@@ -2615,9 +2643,10 @@ const GRAMMAR_GLOSSARY = {
     contoh:[
       {kalimat:'She <u>is</u> a doctor.', catatan:'"is" menghubungkan She + a doctor.'},
       {kalimat:'The soup <u>tastes</u> delicious.', catatan:'"tastes" menghubungkan sup + rasanya.'},
-      {kalimat:'He <u>became</u> a teacher.', catatan:'"became" menghubungkan He + a teacher.'}
+      {kalimat:'He <u>became</u> a teacher.', catatan:'"became" menghubungkan He + a teacher.'},
+      {kalimat:'She <u>seems</u> tired.', catatan:'"seems" menghubungkan sifat.'}
     ],
-    perbedaan:'Copula diikuti pelengkap (kata sifat/benda), bukan objek. "She is a doctor" — "a doctor" pelengkap, bukan objek. Bandingkan "She reads a book" — "a book" objek.',
+    perbedaan:'Copula diikuti pelengkap (kata sifat/benda), bukan objek. "She is a doctor" — "a doctor" pelengkap, bukan objek. Bandingkan "She reads a book" — "a book" objek. Hati-hati: "look" bisa jadi kata kerja biasa (melihat) atau copula (tampak).',
     related:['subject-complement','main-verb','auxiliary']},
   'transfer-to-ing': {id:'transfer-to-ing', name:'to + V-ing (pola keliru)', abbr:'to + V-ing', category:'transfer',
     definition:'Pola keliru: "to" diikuti kata kerja bentuk -ing. Dalam bahasa Indonesia, "untuk" bisa diikuti kata kerja apa saja, sehingga pelajar sering menulis "to reading" alih-alih "to read" atau "reading".',
@@ -2708,7 +2737,7 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'BENAR: She is <u>a</u> teacher.', catatan:'"a" sebelum kata benda tunggal non-spesifik.'},
       {kalimat:'BENAR: <u>The</u> book is on the table.', catatan:'"the" untuk kata benda spesifik.'}
     ],
-    perbedaan:'Countable tunggal butuh determiner. Uncountable (water, advice) dan plural (books) bisa tanpa determiner.',
+    perbedaan:'Countable tunggal butuh determiner. Uncountable (water, advice) dan plural (books) bisa tanpa determiner. Kata benda abstrak (life, time) sering tanpa determiner juga.',
     related:['determiner','noun','noun-phrase']},
   'transfer-depend-on': {id:'transfer-depend-on', name:'depend of (pola keliru)', abbr:'depend of', category:'transfer',
     definition:'Pola keliru: "depend" diikuti "of". Dalam bahasa Inggris, kata kerja "depend" selalu diikuti preposisi "on".',
@@ -3324,10 +3353,19 @@ const TEST_CORPUS = [
   { group: 'V', s: 'The book is on the table.', verdict: 'clean' },
   { group: 'V', s: 'She went to the market.', verdict: 'clean' },
 
-  /* W (baseline akademik — xfail sampai W17) */
-  { group: 'W', s: 'Climate change affects agriculture.', xfail: 'N/V ambiguity – disambiguasi kontekstual W17' },
+  /* W (W15d: baseline akademik — kini lulus nyata) */
+  { group: 'W', s: 'Climate change affects agriculture.', noIssue: ['subject-verb-agreement'] },
   { group: 'W', s: 'The results suggest a strong influence.', noIssue: ['subject-verb-agreement'] },
-  { group: 'W', s: 'This change increases the risk.', noIssue: ['subject-verb-agreement'] }
+  { group: 'W', s: 'This change increases the risk.', noIssue: ['subject-verb-agreement'] },
+
+  /* X (W15d: disambiguasi N/V kontekstual) */
+  { group: 'X', s: 'The design works well.', noIssue: ['subject-verb-agreement'] },
+  { group: 'X', s: 'The process works.', noIssue: ['subject-verb-agreement'] },
+  { group: 'X', s: 'I change my mind.', noIssue: ['subject-verb-agreement'] },
+  { group: 'X', s: 'The influence is strong.', noIssue: ['subject-verb-agreement'] },
+  { group: 'X', s: 'My father works in a bank.', noIssue: ['subject-verb-agreement'] },
+  { group: 'X', s: 'She works hard.', noIssue: ['subject-verb-agreement'] },
+  { group: 'X', s: 'The work is hard.', noIssue: ['subject-verb-agreement'] }
 ];
 
 function runOneTest(tc) {
@@ -3438,7 +3476,7 @@ function collectOOV() {
    24. INIT
    ============================================================ */
 const tcEl = $('target-count');
-if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · target: 0 hard fail';
+if (tcEl) tcEl.textContent = TEST_CORPUS.length + ' test · target: 0 fail · 0 xfail';
 
 $('run-tests').addEventListener('click', runTests);
 const collectBtn = $('collect-oov');
