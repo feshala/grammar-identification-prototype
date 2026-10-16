@@ -309,14 +309,16 @@
 /* ============================================================
    KONTRAK VERIFIKASI — versi JS (grep target: "_CONTRACT")
    ============================================================ */
-/* W16: contract diperbarui ke wave baru, nextWave di-renumber. */
+/* W16: contract diperbarui ke wave baru, nextWave di-renumber.
+   W16.1: hotfix tagging `read` (invariant past) + ekspansi glosarium. */
 const _CONTRACT = {
   version: '2.7.4',
   wave: 'W16',
   scope: [
     'W15b: splitFiniteVPs pecah VP berisi 2+ finit.',
     'W15c: perkaya glosarium.',
-    'W16: Brill transformation rules — VBD↔VBN, IN↔TO, VBG↔NN, NN↔VB (extend); idempotent, ordered, guarded.'
+    'W16: Brill transformation rules — VBD↔VBN, IN↔TO, VBG↔NN, NN↔VB (extend); idempotent, ordered, guarded.',
+    'W16.1: hotfix `read` invariant past (hapus dari LEX reguler; serahkan ke IRREG + V2_EQ_V3); ekspansi glosarium +10 entri (target chars ≥ 50000, entries ≥ 2 contoh ≥ 60).'
   ],
   frozen: ['detectTense','chunk'],
   get target() { return `${TEST_CORPUS.length} test · 0 hard fail`; },
@@ -449,7 +451,14 @@ for (const f in AUX_HAVE) reg(f, {t:AUX_HAVE[f],lemma:'have',aux:true,form:f==='
 reg(['not','very','always','never','often','sometimes','usually','already','just','too','also','here','there','now','then','soon','quite','rather','really','still','yesterday','today','tomorrow','again','yet','ever','once','twice','only','even','almost','enough','maybe','perhaps','please'], {t:'RB'});
 reg('well', {t:'RB',amb:['JJ']});
 reg('ago', {t:'RB'});
-reg(['go','eat','play','study','read','finish','want','learn','buy','write','move','pass','see','come','take','make','give','get','find','leave','say','tell','think','bring','run','speak','break','begin','like','love','hate','need','help','use','try','start','stop','open','close','put','keep','let','call','ask','answer','watch','listen','walk','talk','live','die','happen','change','carry','hold','turn','show','hear','feel','become','seem','know','mean','understand','remember','forget','wait','meet','pay','send','build','grow','sit','stand','lose','win','fall','rise','sing','swim','teach','catch','drive','fly','draw','wear','drink','sleep','wake','wash','clean','cook','prepare','belong','enjoy','prefer','decide','allow','invite','visit','arrive','return','travel','continue','improve','realize','depend'], {t:'VB',form:'V1'});
+
+/* W16.1 HOTFIX: 'read' dihapus dari LEX reguler.
+   Alasan: 'read' adalah invariant past (V1=V2=V3 ejaan sama).
+   Penanganan diserahkan ke IRREG['read'] yang sudah punya
+   amb:['VBP','VBN'] + logika V2_EQ_V3 di tagOne() untuk konteks
+   have/be → VBN, konteks lain → VBD (V2). Ini memperbaiki
+   false-positive S-V agreement dan deteksi Present Perfect. */
+reg(['go','eat','play','study','finish','want','learn','buy','write','move','pass','see','come','take','make','give','get','find','leave','say','tell','think','bring','run','speak','break','begin','like','love','hate','need','help','use','try','start','stop','open','close','put','keep','let','call','ask','answer','watch','listen','walk','talk','live','die','happen','change','carry','hold','turn','show','hear','feel','become','seem','know','mean','understand','remember','forget','wait','meet','pay','send','build','grow','sit','stand','lose','win','fall','rise','sing','swim','teach','catch','drive','fly','draw','wear','drink','sleep','wake','wash','clean','cook','prepare','belong','enjoy','prefer','decide','allow','invite','visit','arrive','return','travel','continue','improve','realize','depend'], {t:'VB',form:'V1'});
 reg('work', {t:'NN',amb:['VB']});
 reg('water', {t:'NN',amb:['VB']});
 reg(['book','room','school','market','food','morning','evening','night','day','year','week','month','hour','minute','second','time','friend','family','home','house','city','country','world','life','way','thing','people','man','woman','child','student','teacher','author','exam','test','homework','breakfast','lunch','dinner','car','tree','dog','cat','table','chair','door','window','hand','head','eye','face','money','job','idea','problem','question','answer','story','word','name','number','part','place','church','office','hospital','football','basketball','sport','game','music','song','movie','language','letter','email','message','phone','computer','internet','island','mountain','river','sea','ocean','sky','sun','moon','star','air','fire','earth','garden','park','street','road','village','town','area','size','type','kind','form','color','shape','sound','taste','smell','dream','plan','reason','result','effect','cause','purpose','goal','future','past','present'], {t:'NN'});
@@ -1981,7 +1990,7 @@ const PHRASE_TO_GLOSSARY = {
 const FORM_TO_GLOSSARY = {'V1':'v1','V2':'v2','V3':'v3','V-ing':'v-ing','V-s':'v-s'};
 
 /* ============================================================
-   18. GRAMMAR GLOSSARY (dipertahankan dari W15c)
+   18. GRAMMAR GLOSSARY (dipertahankan dari W15c, +10 entri W16.1)
    ============================================================ */
 const GLOSSARY_CATEGORIES = [
   {id:'pos', name:'Jenis Kata'},
@@ -2837,7 +2846,149 @@ const GRAMMAR_GLOSSARY = {
       {kalimat:'BENAR: She <u>arrived in</u> Jakarta.', catatan:'Kota/negara pakai "in".'}
     ],
     perbedaan:'"Arrive at" untuk titik spesifik. "Arrive in" untuk area luas. Bandingkan dengan "get to" yang justru pakai "to".',
-    related:['preposition','verb','transfer-discuss-about']}
+    related:['preposition','verb','transfer-discuss-about']},
+
+  /* ============ W16.1 — 10 entri baru ============ */
+  'relative-clause': {id:'relative-clause', name:'Relative Clause (Klausa Relatif)', abbr:'who/which/that', category:'sentence',
+    definition:'Klausa yang menjelaskan kata benda sebelumnya, dimulai dengan kata ganti relatif.',
+    simple:'Klausa penjelas kata benda. Contoh: "the man who came" — "who came" menjelaskan "the man".',
+    fungsi:'Menjelaskan atau membatasi kata benda. Bisa juga berupa contact clause tanpa kata ganti relatif, seperti "the book I bought".',
+    identifikasi:'Dimulai who (orang), which (benda), that (orang/benda), whose (milik), where (tempat). Jika dihilangkan, kata bendanya jadi kurang spesifik.',
+    rumus:'kata benda + (relative pronoun) + klausa',
+    contoh:[
+      {kalimat:'The man <u>who came yesterday</u> is my uncle.', catatan:'"who came yesterday" menjelaskan "the man".'},
+      {kalimat:'The book <u>which I bought</u> is expensive.', catatan:'"which I bought" menjelaskan "the book".'},
+      {kalimat:'The book <u>I bought</u> is expensive.', catatan:'Contact clause — relative pronoun dihilangkan.'},
+      {kalimat:'The house <u>where I grew up</u> is old.', catatan:'"where" untuk tempat.'}
+    ],
+    perbedaan:'Relative clause menjelaskan kata benda (fungsi adjektiva). Noun clause berfungsi sebagai kata benda (subjek/objek). Bedakan "the man who came" (relative) dari "I know who came" (noun clause).',
+    related:['subordinate-clause','adjective','noun-phrase']},
+  'conditional-sentence': {id:'conditional-sentence', name:'Conditional Sentence (Kalimat Pengandaian)', abbr:'If-clause', category:'sentence',
+    definition:'Kalimat yang menyatakan syarat dan akibat, biasanya dimulai dengan "if".',
+    simple:'Kalimat "jika... maka...". Contoh: If it rains, I stay home.',
+    fungsi:'Menyatakan kemungkinan, pengandaian, atau hipotesis. Ada 4 tipe: zero, first, second, third.',
+    identifikasi:'Dimulai "if" + klausa, lalu klausa utama. Tipe 1: if + V1, will + V1. Tipe 2: if + V2, would + V1 (pengandaian tidak nyata).',
+    rumus:'If + klausa syarat, + klausa akibat',
+    contoh:[
+      {kalimat:'If it <u>rains</u>, I <u>will stay</u> home.', catatan:'Tipe 1: kemungkinan nyata.'},
+      {kalimat:'If I <u>were</u> you, I <u>would go</u>.', catatan:'Tipe 2: pengandaian tidak nyata (subjunctive "were").'},
+      {kalimat:'If she <u>had studied</u>, she <u>would have passed</u>.', catatan:'Tipe 3: penyesalan masa lalu.'},
+      {kalimat:'If you <u>heat</u> ice, it <u>melts</u>.', catatan:'Tipe 0: fakta umum.'}
+    ],
+    perbedaan:'Tipe 2 pakai "were" untuk semua subjek (subjunctive), bukan "was". Jangan campur "if I would" (salah). Bandingkan "if" (kondisi) dari "when" (waktu pasti).',
+    related:['subordinate-clause','modal-construction','simple-future']},
+  'phrasal-verb': {id:'phrasal-verb', name:'Phrasal Verb (Frasa Kata Kerja)', abbr:'verb + particle', category:'verbform',
+    definition:'Gabungan kata kerja + preposisi/kata keterangan yang maknanya berbeda dari kata asalnya.',
+    simple:'Kata kerja yang berubah arti jika digabung. Contoh: "give up" (menyerah) bukan "give" + "up".',
+    fungsi:'Membentuk makna idiomatik yang tidak bisa ditebak dari kata per kata. Sangat umum dalam bahasa Inggris lisan.',
+    identifikasi:'Kata kerja + preposisi/kata keterangan (up, out, in, off, on, down, away). Maknanya sering idiomatik.',
+    rumus:'kata kerja + partikel (makna baru)',
+    contoh:[
+      {kalimat:'She <u>gave up</u> smoking.', catatan:'"gave up" = menyerah, bukan "memberi ke atas".'},
+      {kalimat:'I <u>look forward to</u> meeting you.', catatan:'"look forward to" = menantikan.'},
+      {kalimat:'Please <u>turn off</u> the light.', catatan:'"turn off" = mematikan.'},
+      {kalimat:'He <u>ran into</u> an old friend.', catatan:'"ran into" = bertemu tak sengaja.'}
+    ],
+    perbedaan:'Phrasal verb maknanya idiomatik. Verb + preposition biasa maknanya literal. "Look at the sky" (literal) vs "look after the baby" (phrasal = menjaga). Setelah phrasal verb dengan "to", kata kerja berikutnya V-ing: "look forward to meeting", bukan "to meet".',
+    related:['verb','preposition','transfer-to-ing','infinitive']},
+  'reflexive-pronoun': {id:'reflexive-pronoun', name:'Reflexive Pronoun (Kata Ganti Refleksif)', abbr:'-self/-selves', category:'pos',
+    definition:'Kata ganti yang merujuk kembali ke pelaku kalimat.',
+    simple:'Kata ganti yang berakhiran -self. Contoh: myself, yourself, himself.',
+    fungsi:'Dipakai saat pelaku dan yang dikenai tindakan adalah orang yang sama. Bisa juga untuk penekanan.',
+    identifikasi:'myself, yourself, himself, herself, itself, ourselves, yourselves, themselves. Selalu merujuk ke subjek kalimat.',
+    rumus:'Pelaku + kata kerja + -self (jika objek = pelaku)',
+    contoh:[
+      {kalimat:'She hurt <u>herself</u>.', catatan:'Pelaku dan objek sama (she).'},
+      {kalimat:'I taught <u>myself</u> to play guitar.', catatan:'"myself" merujuk ke "I".'},
+      {kalimat:'They enjoyed <u>themselves</u>.', catatan:'"themselves" merujuk ke "they".'},
+      {kalimat:'The president <u>himself</u> came.', catatan:'Untuk penekanan.'}
+    ],
+    perbedaan:'Kata ganti refleksif butuh pelaku yang sama. Kata ganti biasa (him, her) merujuk ke orang lain. "She hurt her" (orang lain) vs "She hurt herself" (diri sendiri). Bahasa Indonesia pakai "diri sendiri" atau "sendiri", bahasa Inggris wajib pakai -self.',
+    related:['pronoun','subject','direct-object']},
+  'possessive-pronoun': {id:'possessive-pronoun', name:'Possessive Pronoun (Kata Ganti Kepemilikan)', abbr:'mine/yours/his', category:'pos',
+    definition:'Kata ganti yang menyatakan kepemilikan tanpa diikuti kata benda.',
+    simple:'Kata ganti milik. Contoh: mine, yours, his, hers, ours, theirs.',
+    fungsi:'Menggantikan "kata ganti kepemilikan + kata benda". "My book" → "mine".',
+    identifikasi:'mine, yours, his, hers, its, ours, yours, theirs. Tidak diikuti kata benda. Bandingkan dengan my/your/her yang HARUS diikuti kata benda.',
+    rumus:'Kata ganti kepemilikan (tanpa kata benda setelahnya)',
+    contoh:[
+      {kalimat:'This book is <u>mine</u>.', catatan:'"mine" = my book.'},
+      {kalimat:'That car is <u>hers</u>.', catatan:'"hers" = her car.'},
+      {kalimat:'The decision is <u>theirs</u>.', catatan:'"theirs" = their decision.'},
+      {kalimat:'Is this pen <u>yours</u>?', catatan:'"yours" = your pen.'}
+    ],
+    perbedaan:'"My" (possessive adjective) harus diikuti kata benda: "my book". "Mine" (possessive pronoun) tidak diikuti kata benda: "it is mine". Jangan tulis "it is my" tanpa kata benda.',
+    related:['pronoun','determiner','noun-phrase']},
+  'collective-noun': {id:'collective-noun', name:'Collective Noun (Kata Benda Kolektif)', abbr:'group/team/family', category:'pos',
+    definition:'Kata benda tunggal yang merujuk pada sekelompok orang atau benda.',
+    simple:'Kata benda tunggal yang artinya banyak. Contoh: family, team, group.',
+    fungsi:'Dianggap tunggal atau jamak tergantung konteks. Dalam bahasa Inggris Amerika, biasanya tunggal. Dalam bahasa Inggris Britania, sering dianggap jamak.',
+    identifikasi:'family, team, group, class, committee, government, staff, audience, public. Bentuknya tunggal tapi isinya banyak.',
+    rumus:'Kata benda kolektif + kata kerja (tunggal atau jamak)',
+    contoh:[
+      {kalimat:'My family <u>is</u> large.', catatan:'AmE: family dianggap tunggal.'},
+      {kalimat:'The team <u>are</u> playing well.', catatan:'BrE: team dianggap jamak.'},
+      {kalimat:'The committee <u>has</u> decided.', catatan:'Tunggal — komite sebagai satu unit.'},
+      {kalimat:'The staff <u>are</u> happy.', catatan:'Jamak — tiap anggota.'}
+    ],
+    perbedaan:'Kata benda kolektif tidak sama dengan kata benda jamak. "Family is" (AmE) vs "families are" (jamak). Pilih konsisten: AmE pakai tunggal, BrE boleh jamak jika menekankan anggota.',
+    related:['noun','subject-verb-agreement']},
+  'bare-infinitive': {id:'bare-infinitive', name:'Bare Infinitive (Infinitive Tanpa "to")', abbr:'V1 tanpa to', category:'verbform',
+    definition:'Bentuk kata kerja dasar tanpa "to", dipakai setelah modal dan kata kerja tertentu.',
+    simple:'Kata kerja dasar tanpa "to". Contoh: "I can swim" — "swim" tanpa "to".',
+    fungsi:'Dipakai setelah modal (can, will, must), setelah make/let/help, dan setelah "had better", "would rather".',
+    identifikasi:'V1 setelah modal atau setelah make/let/see/hear/feel (sebagai causative/perception verb).',
+    rumus:'modal + V1 / make/let + objek + V1',
+    contoh:[
+      {kalimat:'She can <u>swim</u>.', catatan:'Setelah modal "can".'},
+      {kalimat:'Let me <u>go</u>.', catatan:'Setelah "let".'},
+      {kalimat:'He made her <u>cry</u>.', catatan:'Setelah "make + objek".'},
+      {kalimat:'I saw him <u>leave</u>.', catatan:'Setelah perception verb "saw".'}
+    ],
+    perbedaan:'Bare infinitive tidak pakai "to". Full infinitive pakai "to": "I want to go". Setelah modal SELALU bare: "can go", bukan "can to go". Setelah "want/decide/hope" pakai "to".',
+    related:['infinitive','modal-construction','modal-verb','v1']},
+  'article': {id:'article', name:'Article (Kata Sandang)', abbr:'a / an / the', category:'pos',
+    definition:'Kata penunjuk yang mendahului kata benda untuk menunjukkan apakah bendanya spesifik atau umum.',
+    simple:'"A/an" untuk benda umum, "the" untuk benda tertentu. Contoh: a book / the book.',
+    fungsi:'Menentukan apakah kata benda merujuk pada hal yang sudah diketahui (the) atau baru/tidak spesifik (a/an).',
+    identifikasi:'"a" sebelum bunyi konsonan, "an" sebelum bunyi vokal, "the" untuk benda tertentu. Bahasa Indonesia tidak punya article, jadi sering dilupakan.',
+    rumus:'a/an + kata benda tunggal (umum) / the + kata benda (spesifik)',
+    contoh:[
+      {kalimat:'I saw <u>a</u> cat.', catatan:'Kucing mana saja, belum spesifik.'},
+      {kalimat:'<u>The</u> cat is black.', catatan:'Kucing yang sudah disebut sebelumnya.'},
+      {kalimat:'She is <u>an</u> engineer.', catatan:'"an" sebelum bunyi vokal.'},
+      {kalimat:'<u>The</u> sun rises in the east.', catatan:'Benda unik pakai "the".'}
+    ],
+    perbedaan:'"A/an" hanya untuk kata benda tunggal yang bisa dihitung. Kata benda jamak atau uncountable tidak pakai "a/an": "books" (bukan "a books"), "water" (bukan "a water"). "The" bisa untuk tunggal, jamak, dan uncountable.',
+    related:['determiner','noun','missing-article','noun-phrase']},
+  'countable-uncountable': {id:'countable-uncountable', name:'Countable vs Uncountable Noun', abbr:'C vs U', category:'pos',
+    definition:'Perbedaan kata benda yang bisa dihitung (countable) dan tidak bisa dihitung (uncountable).',
+    simple:'Countable: bisa pakai angka (one book, two books). Uncountable: tidak bisa (water, bukan "two waters").',
+    fungsi:'Menentukan apakah kata benda bisa dijamak dan apakah bisa didahului "a/an".',
+    identifikasi:'Countable: book, car, student, idea. Uncountable: water, rice, advice, information, furniture, news, money. Beberapa kata berbeda antara Indonesia dan Inggris: "information" uncountable, padahal Indonesia "informasi" bisa dihitung.',
+    rumus:'Countable: a/an + kata benda / kata benda + -s. Uncountable: tanpa a/an, tanpa -s.',
+    contoh:[
+      {kalimat:'I have <u>two books</u>.', catatan:'Countable → bisa dijamak.'},
+      {kalimat:'I need <u>some water</u>.', catatan:'Uncountable → tidak bisa "two waters".'},
+      {kalimat:'She gave me <u>some advice</u>.', catatan:'"advice" uncountable, tidak bisa "advices".'},
+      {kalimat:'The <u>information</u> is useful.', catatan:'"information" uncountable, tidak bisa "informations".'}
+    ],
+    perbedaan:'Kata yang uncountable dalam Inggris bisa countable dalam Indonesia: advice, information, furniture, news, money, research. Untuk menghitung, pakai satuan: "a piece of advice", "two cups of water".',
+    related:['noun','determiner','missing-article']},
+  'comparative-superlative': {id:'comparative-superlative', name:'Comparative & Superlative (Perbandingan)', abbr:'-er/-est / more/most', category:'pos',
+    definition:'Bentuk kata sifat untuk membandingkan dua hal (comparative) atau lebih dari dua (superlative).',
+    simple:'Comparative: lebih (taller, more beautiful). Superlative: paling (tallest, most beautiful).',
+    fungsi:'Membandingkan sifat antara dua hal atau lebih. Comparative sering dengan "than", superlative sering dengan "the".',
+    identifikasi:'Kata sifat pendek (1-2 suku kata): -er/-est (tall → taller → tallest). Kata sifat panjang (3+ suku kata): more/most (beautiful → more beautiful → most beautiful).',
+    rumus:'Comparative: lebih + JJ / JJ + -er + than. Superlative: paling + JJ / the + JJ + -est.',
+    contoh:[
+      {kalimat:'She is <u>taller</u> than me.', catatan:'Kata sifat pendek → -er.'},
+      {kalimat:'This is <u>more beautiful</u>.', catatan:'Kata sifat panjang → more.'},
+      {kalimat:'She is the <u>tallest</u>.', catatan:'Superlatif kata sifat pendek.'},
+      {kalimat:'He is the <u>most intelligent</u>.', catatan:'Superlatif kata sifat panjang.'}
+    ],
+    perbedaan:'Jangan pakai "more" + -er bersamaan: "more taller" (salah). Kata sifat pendek pakai -er, kata sifat panjang pakai more. Beberapa kata tidak beraturan: good → better → best; bad → worse → worst; far → farther/further → farthest/furthest.',
+    related:['adjective','transfer-more-er']}
 };
 
 /* ============================================================
